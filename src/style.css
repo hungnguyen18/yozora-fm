@@ -1,5 +1,22 @@
 @import 'tailwindcss';
 
+/* Yozora.fm Brand Tokens — Tailwind v4 CSS theme */
+@theme {
+  --color-primary: #4F46E5;
+  --color-primary-light: #6366F1;
+  --color-secondary: #F59E0B;
+  --color-accent: #F97066;
+  --color-deep-space: #0A0B1A;
+  --color-midnight: #141529;
+  --color-soft-white: #E8E8F0;
+  --color-muted-lavender: #9B9BB4;
+  --color-deep-purple: #7C3AED;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
 /* Google Fonts — display/headings */
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
