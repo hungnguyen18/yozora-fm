@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useDebounceFn, useEventListener } from '@vueuse/core';
+import { useEventListener } from '@vueuse/core';
 import { Search, X, Music, User, Tv } from 'lucide-vue-next';
 import { useSongsStore } from '@/stores/songs';
 import { useGalaxyStore } from '@/stores/galaxy';
@@ -16,16 +16,16 @@ const query = ref('');
 const listResult = ref<ISong[]>([]);
 const inputRef = ref<HTMLInputElement | null>(null);
 
-// Debounced search (300ms)
-const doSearch = useDebounceFn(() => {
-  if (query.value.trim().length < 2) {
+// Reactive search — runs immediately when query changes.
+// searchSongs is synchronous (in-memory filter), so no debounce needed.
+watch(query, (q) => {
+  const trimmed = q.trim();
+  if (trimmed.length < 2) {
     listResult.value = [];
     return;
   }
-  listResult.value = songsStore.searchSongs(query.value);
-}, 300);
-
-watch(query, () => doSearch());
+  listResult.value = songsStore.searchSongs(trimmed);
+});
 
 watch(isExpanded, (val) => {
   if (val) {
@@ -307,7 +307,7 @@ useEventListener(window, 'keydown', onKeyDown);
     0 0 0 1px rgba(0, 0, 0, 0.3),
     0 8px 40px rgba(0, 0, 0, 0.5),
     0 0 80px rgba(79, 70, 229, 0.08);
-  overflow: hidden;
+  overflow-y: auto;
   max-height: calc(100vh - 8rem);
 }
 

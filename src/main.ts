@@ -6,22 +6,18 @@ import App from "./App.vue";
 const app = createApp(App);
 
 // Suppress Vue warnings for TresJS components (Tres*, primitive).
-// These components are resolved at runtime inside TresCanvas, not via
-// Vue's global component registry.
+// These components are resolved at runtime inside TresCanvas's custom
+// renderer, not via Vue's global component registry. The warnings are
+// harmless but noisy.
 //
-// NOTE: We intentionally do NOT add isCustomElement to vite.config.ts
-// because doing so tells the Vue template compiler to treat these tags
-// as native custom elements, which prevents TresJS from resolving them
-// inside its own renderer — breaking 3D rendering entirely.
-//
-// Runtime isCustomElement helps in dev mode; warnHandler catches the
-// remaining "Failed to resolve component" warnings in production builds.
-app.config.compilerOptions.isCustomElement = (tag: string) => {
-  return tag === "primitive" || tag.startsWith("Tres");
-};
-
-app.config.warnHandler = (msg, _vm, _trace) => {
+// NOTE: compilerOptions.isCustomElement does NOT work in Vite dev mode
+// (runtime-only build) and generates its own warning. Instead we use
+// warnHandler to silently drop the "Failed to resolve component" messages.
+app.config.warnHandler = (msg) => {
   if (msg.includes("Failed to resolve component")) {
+    return;
+  }
+  if (msg.includes("compilerOptions")) {
     return;
   }
   console.warn(msg);
