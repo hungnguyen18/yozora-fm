@@ -79,10 +79,14 @@ export const usePlayerStore = defineStore("player", () => {
       return;
     }
 
-    // Find the nearest star by Euclidean distance in galaxy space
-    const currentPos = galaxyStore.listStarPosition.find(
-      (sp) => sp.songId === currentId,
-    );
+    // Build a position lookup map once — O(n) instead of O(n*m) nested .find()
+    const posMap = new Map<number, { x: number; y: number }>();
+    for (let i = 0; i < galaxyStore.listStarPosition.length; i += 1) {
+      const sp = galaxyStore.listStarPosition[i];
+      posMap.set(sp.songId, sp);
+    }
+
+    const currentPos = posMap.get(currentId);
     let nextSong: ISong;
 
     if (currentPos) {
@@ -90,9 +94,7 @@ export const usePlayerStore = defineStore("player", () => {
       let nearest = listSameEra[0];
       for (let i = 0; i < listSameEra.length; i += 1) {
         const candidate = listSameEra[i];
-        const pos = galaxyStore.listStarPosition.find(
-          (sp) => sp.songId === candidate.id,
-        );
+        const pos = posMap.get(candidate.id);
         if (!pos) {
           continue;
         }
