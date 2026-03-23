@@ -32,25 +32,130 @@ const listBaseScale = ref<number[]>([]);
 // Per-instance 3D world position cached for label projection
 const listStarWorldPosition = shallowRef<THREE.Vector3[]>([]);
 
-// Build a circular gradient texture programmatically for the glow effect
+// Build a high-res glow texture with sharp core, halo, and diffraction spikes
 const createGlowTexture = (): THREE.Texture => {
-  const SIZE = 64;
+  const SIZE = 256;
   const canvas = document.createElement('canvas');
   canvas.width = SIZE;
   canvas.height = SIZE;
   const ctx = canvas.getContext('2d')!;
-  const centre = SIZE / 2;
+  const cx = SIZE / 2;
 
-  const gradient = ctx.createRadialGradient(centre, centre, 0, centre, centre, centre);
-  gradient.addColorStop(0, 'rgba(255,255,255,1)');
-  gradient.addColorStop(0.3, 'rgba(255,255,255,0.6)');
-  gradient.addColorStop(1, 'rgba(255,255,255,0)');
-
-  ctx.fillStyle = gradient;
+  // Layer 1: Outer glow (large, faint)
+  const outerGlow = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+  outerGlow.addColorStop(0, 'rgba(255,255,255,0.25)');
+  outerGlow.addColorStop(0.15, 'rgba(255,255,255,0.12)');
+  outerGlow.addColorStop(0.4, 'rgba(255,255,255,0.04)');
+  outerGlow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = outerGlow;
   ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Layer 2: Inner halo (medium, brighter)
+  const innerHalo = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx * 0.35);
+  innerHalo.addColorStop(0, 'rgba(255,255,255,0.9)');
+  innerHalo.addColorStop(0.4, 'rgba(255,255,255,0.5)');
+  innerHalo.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = innerHalo;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Layer 3: Sharp bright core
+  const core = ctx.createRadialGradient(cx, cx, 0, cx, cx, 4);
+  core.addColorStop(0, 'rgba(255,255,255,1)');
+  core.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Layer 4: Diffraction spikes (4 thin rays)
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let angle = 0; angle < 4; angle += 1) {
+    const rad = (angle * Math.PI) / 4 + Math.PI / 8; // 22.5°, 67.5°, 112.5°, 157.5°
+    const spikeLen = cx * 0.85;
+    const spikeGrad = ctx.createLinearGradient(
+      cx - Math.cos(rad) * spikeLen,
+      cx - Math.sin(rad) * spikeLen,
+      cx + Math.cos(rad) * spikeLen,
+      cx + Math.sin(rad) * spikeLen,
+    );
+    spikeGrad.addColorStop(0, 'rgba(255,255,255,0)');
+    spikeGrad.addColorStop(0.4, 'rgba(255,255,255,0.15)');
+    spikeGrad.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+    spikeGrad.addColorStop(0.6, 'rgba(255,255,255,0.15)');
+    spikeGrad.addColorStop(1, 'rgba(255,255,255,0)');
+
+    ctx.beginPath();
+    ctx.moveTo(cx - Math.cos(rad) * spikeLen, cx - Math.sin(rad) * spikeLen);
+    ctx.lineTo(cx + Math.cos(rad) * spikeLen, cx + Math.sin(rad) * spikeLen);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = spikeGrad;
+    ctx.stroke();
+  }
+  ctx.restore();
 
   const texture = new THREE.CanvasTexture(canvas);
   return texture;
+};
+
+// Custom shader material with per-instance twinkle animation.
+// Three.js ShaderMaterial auto-injects: position, uv, normal, modelViewMatrix,
+// projectionMatrix, instanceMatrix, instanceColor — do NOT re-declare them.
+const TWINKLE_VERTEX = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vTwinklePhase;
+
+  void main() {
+    vUv = uv;
+    #ifdef USE_INSTANCING_COLOR
+      vColor = instanceColor;
+    #else
+      vColor = vec3(1.0);
+    #endif
+
+    // Use instance matrix position as twinkle phase seed
+    vec4 worldPos = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+    vTwinklePhase = fract(worldPos.x * 0.137 + worldPos.y * 0.293) * 6.2831853;
+
+    vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const TWINKLE_FRAGMENT = /* glsl */ `
+  uniform sampler2D map;
+  uniform float uTime;
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vTwinklePhase;
+
+  void main() {
+    vec4 texColor = texture2D(map, vUv);
+
+    // Per-star twinkle: combine two sine waves at different frequencies
+    float twinkle = 0.75 + 0.25 * sin(uTime * 1.2 + vTwinklePhase)
+                        * sin(uTime * 0.7 + vTwinklePhase * 2.3);
+
+    // Brighter core (whiter center, colored edges)
+    float coreMask = texColor.r;
+    vec3 color = mix(vColor, vec3(1.0), coreMask * 0.6);
+
+    gl_FragColor = vec4(color * texColor.rgb * twinkle, texColor.a * 0.7);
+  }
+`;
+
+const createStarMaterial = (glowTexture: THREE.Texture): THREE.ShaderMaterial => {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: glowTexture },
+      uTime: { value: 0.0 },
+    },
+    vertexShader: TWINKLE_VERTEX,
+    fragmentShader: TWINKLE_FRAGMENT,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
 };
 
 // Build the InstancedMesh and apply per-instance transforms and colours.
@@ -62,14 +167,7 @@ const buildMesh = () => {
   const { matrices, colors, sizes, count } = computeBuffers(listSong);
 
   const geometry = new THREE.PlaneGeometry(2, 2);
-  const material = new THREE.MeshBasicMaterial({
-    map: createGlowTexture(),
-    transparent: true,
-    opacity: 0.65,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
+  const material = createStarMaterial(createGlowTexture());
 
   const mesh = new THREE.InstancedMesh(geometry, material, count);
   mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
@@ -309,8 +407,8 @@ const { onBeforeRender } = useLoop();
 
 // Cap star visual size at high zoom to prevent white-blob effect.
 // At zoom > ZOOM_CAP_START, scales are reduced so stars stay readable.
-const ZOOM_CAP_START = 4;
-const MAX_SCREEN_STAR_SIZE = 3.0; // maximum world-space scale allowed
+const ZOOM_CAP_START = 6;
+const MAX_SCREEN_STAR_SIZE = 5.0; // maximum world-space scale allowed
 const ZOOM_CAP_THRESHOLD = 0.5; // only recalculate when zoom changes by this much
 const scaleCapHelper = new THREE.Matrix4();
 const scaleCapPos = new THREE.Vector3();
@@ -342,9 +440,18 @@ const applyScaleCap = (mesh: THREE.InstancedMesh, zoom: number) => {
   mesh.instanceMatrix.needsUpdate = true;
 };
 
+let elapsedTime = 0;
+
 onBeforeRender(({ delta }) => {
   const mesh = instancedMesh.value;
   if (!mesh || !mesh.instanceColor) { return; }
+
+  // Update twinkle time uniform
+  elapsedTime += delta;
+  const mat = mesh.material as THREE.ShaderMaterial;
+  if (mat.uniforms?.uTime) {
+    mat.uniforms.uTime.value = elapsedTime;
+  }
 
   // Apply star scale cap only when zoom crosses a significant threshold
   // to avoid recalculating all 9111 instances during smooth zoom animations
