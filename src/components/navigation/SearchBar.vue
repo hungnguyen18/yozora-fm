@@ -142,59 +142,57 @@ useEventListener(window, 'keydown', onKeyDown);
             v-if="listResult.length > 0"
             class="search-results"
           >
-            <template>
-              <!-- Songs group -->
-              <div v-if="listResult.length > 0">
-                <div class="search-group-header">
-                  <Music :size="12" class="text-primary-light" />
-                  <span>Songs</span>
-                </div>
-                <div
-                  v-for="song in listResult.slice(0, 8)"
-                  :key="song.id"
-                  class="search-result-item"
-                  @click="onSelectSong(song)"
-                >
-                  <p class="search-result-title">{{ song.title }}</p>
-                  <p class="search-result-meta">
-                    {{ song.artist?.name }}
-                    <span v-if="song.anime?.title"> · {{ song.anime.title }}</span>
-                  </p>
-                </div>
+            <!-- Songs group -->
+            <div v-if="listResult.length > 0">
+              <div class="search-group-header">
+                <Music :size="12" class="text-primary-light" />
+                <span>Songs</span>
               </div>
+              <div
+                v-for="song in listResult.slice(0, 8)"
+                :key="song.id"
+                class="search-result-item"
+                @click="onSelectSong(song)"
+              >
+                <p class="search-result-title">{{ song.title }}</p>
+                <p class="search-result-meta">
+                  {{ song.artist?.name }}
+                  <span v-if="song.anime?.title"> · {{ song.anime.title }}</span>
+                </p>
+              </div>
+            </div>
 
-              <!-- Artists group -->
-              <div v-if="uniqueArtists().length > 0">
-                <div class="search-group-header">
-                  <User :size="12" class="text-secondary" />
-                  <span>Artists</span>
-                </div>
-                <div
-                  v-for="artistName in uniqueArtists().slice(0, 4)"
-                  :key="artistName"
-                  class="search-result-item"
-                  @click="onSelectSong(listResult.find((s) => s.artist?.name === artistName)!)"
-                >
-                  <p class="search-result-title">{{ artistName }}</p>
-                </div>
+            <!-- Artists group -->
+            <div v-if="uniqueArtists().length > 0">
+              <div class="search-group-header">
+                <User :size="12" class="text-secondary" />
+                <span>Artists</span>
               </div>
+              <div
+                v-for="artistName in uniqueArtists().slice(0, 4)"
+                :key="artistName"
+                class="search-result-item"
+                @click="onSelectSong(listResult.find((s) => s.artist?.name === artistName)!)"
+              >
+                <p class="search-result-title">{{ artistName }}</p>
+              </div>
+            </div>
 
-              <!-- Anime group -->
-              <div v-if="uniqueAnime().length > 0">
-                <div class="search-group-header">
-                  <Tv :size="12" class="text-accent" />
-                  <span>Anime</span>
-                </div>
-                <div
-                  v-for="animeTitle in uniqueAnime().slice(0, 4)"
-                  :key="animeTitle"
-                  class="search-result-item"
-                  @click="onSelectSong(listResult.find((s) => s.anime?.title === animeTitle)!)"
-                >
-                  <p class="search-result-title">{{ animeTitle }}</p>
-                </div>
+            <!-- Anime group -->
+            <div v-if="uniqueAnime().length > 0">
+              <div class="search-group-header">
+                <Tv :size="12" class="text-accent" />
+                <span>Anime</span>
               </div>
-            </template>
+              <div
+                v-for="animeTitle in uniqueAnime().slice(0, 4)"
+                :key="animeTitle"
+                class="search-result-item"
+                @click="onSelectSong(listResult.find((s) => s.anime?.title === animeTitle)!)"
+              >
+                <p class="search-result-title">{{ animeTitle }}</p>
+              </div>
+            </div>
           </div>
 
           <!-- No results state -->
