@@ -90,18 +90,16 @@ export const useTrivia = (songId: Ref<number>) => {
   };
 
   const reportTrivia = async (triviaId: number) => {
-    const { error: reportError } = await supabase.rpc(
-      "increment_trivia_report_count",
-      {
-        p_trivia_id: triviaId,
-      },
-    );
+    const { data } = await supabase
+      .from("trivia")
+      .select("report_count")
+      .eq("id", triviaId)
+      .single();
 
-    if (reportError) {
-      // Fallback: direct update if RPC not available
+    if (data) {
       const { error: updateError } = await supabase
         .from("trivia")
-        .update({ report_count: supabase.rpc("increment_trivia_report_count") })
+        .update({ report_count: (data.report_count ?? 0) + 1 })
         .eq("id", triviaId);
 
       if (updateError) {

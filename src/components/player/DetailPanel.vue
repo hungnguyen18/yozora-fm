@@ -8,6 +8,8 @@ import VideoPlayer from '@/components/player/VideoPlayer.vue';
 import YouTubeFallback from '@/components/player/YouTubeFallback.vue';
 import ExternalLinkCard from '@/components/player/ExternalLinkCard.vue';
 import VoteButton from '@/components/community/VoteButton.vue';
+import TriviaSection from '@/components/community/TriviaSection.vue';
+import CommentList from '@/components/community/CommentList.vue';
 
 const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
@@ -144,9 +146,11 @@ const onViewConstellation = () => {
           View artist constellation
         </button>
 
-        <!-- 6. Community section — iconic vote -->
+        <!-- 6. Community section -->
         <div v-if="song" class="community-section">
           <VoteButton :song-id="song.id" />
+          <TriviaSection :song-id="song.id" />
+          <CommentList :song-id="song.id" />
         </div>
       </div>
     </div>
