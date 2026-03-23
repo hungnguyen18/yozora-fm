@@ -1,6 +1,6 @@
-import * as THREE from 'three';
-import type { ISong, TGenre } from '@/types';
-import { GENRE_COLOR_MAP } from '@/types';
+import * as THREE from "three";
+import type { ISong, TGenre } from "@/types";
+import { GENRE_COLOR_MAP } from "@/types";
 
 const R_MAX = 500;
 const TOTAL_SPAN_YEARS = 46;
@@ -35,8 +35,8 @@ const hexToColor = (hex: string): THREE.Color => {
 
 // Logarithmic size mapping: vote_count → [1.0, 4.0]
 const computeStarSize = (voteCount: number): number => {
-  const MIN_SIZE = 1.0;
-  const MAX_SIZE = 4.0;
+  const MIN_SIZE = 8.0;
+  const MAX_SIZE = 25.0;
   // log2(1) = 0, treat vote_count of 0 as 1 to avoid log(0)
   const clamped = Math.max(1, voteCount);
   // Scale: log2 range from 0 to ~10 maps nicely to [1, 4]
@@ -66,13 +66,16 @@ export const useGalaxyLayout = () => {
     for (let i = 0; i < count; i += 1) {
       const song = listSong[i];
       const year = song.year ?? 1980;
-      const clampedYear = Math.max(1980, Math.min(year, 1980 + TOTAL_SPAN_YEARS));
+      const clampedYear = Math.max(
+        1980,
+        Math.min(year, 1980 + TOTAL_SPAN_YEARS),
+      );
       const normalised = (clampedYear - 1980) / TOTAL_SPAN_YEARS;
 
       const baseAngleDeg = normalised * MAX_ANGLE_DEG;
       const baseRadius = R_MAX * (1 - normalised);
 
-      const armIndex = GENRE_ARM_MAP[song.genre ?? 'other'] ?? 2;
+      const armIndex = GENRE_ARM_MAP[song.genre ?? "other"] ?? 2;
       const armOffsetDeg = armIndex * 90;
 
       const rng = seededRandom(song.id);
@@ -92,7 +95,7 @@ export const useGalaxyLayout = () => {
       dummy.updateMatrix();
       dummy.matrix.toArray(matrices, i * 16);
 
-      const genreKey = (song.genre ?? 'other') as TGenre;
+      const genreKey = (song.genre ?? "other") as TGenre;
       const hexColor = GENRE_COLOR_MAP[genreKey] ?? GENRE_COLOR_MAP.other;
       color.copy(hexToColor(hexColor));
       colors[i * 3] = color.r;

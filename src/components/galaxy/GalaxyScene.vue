@@ -23,7 +23,7 @@ const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 20;
 
 // Camera state shared with CameraController via props
-const zoomLevel = ref(1);
+const zoomLevel = ref(3);
 const panX = ref(galaxyStore.panX);
 const panY = ref(galaxyStore.panY);
 

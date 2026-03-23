@@ -1,8 +1,8 @@
-import { defineStore } from 'pinia';
-import { supabase } from '@/lib/supabase';
-import type { ISong } from '@/types';
+import { defineStore } from "pinia";
+import { supabase } from "@/lib/supabase";
+import type { ISong } from "@/types";
 
-export const useSongsStore = defineStore('songs', {
+export const useSongsStore = defineStore("songs", {
   state: () => ({
     listSong: [] as ISong[],
     isLoading: false,
@@ -13,17 +13,34 @@ export const useSongsStore = defineStore('songs', {
       this.isLoading = true;
       this.error = null;
 
-      const { data, error } = await supabase
-        .from('songs')
-        .select('*, artist:artists(*), anime:animes(*)')
-        .order('year', { ascending: true });
+      // Supabase returns max 1000 rows per query — paginate to get all
+      const PAGE_SIZE = 1000;
+      const allSongs: ISong[] = [];
+      let page = 0;
+      let hasMore = true;
 
-      if (error) {
-        this.error = error.message;
-      } else {
-        this.listSong = (data as ISong[]) ?? [];
+      while (hasMore) {
+        const from = page * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+
+        const { data, error } = await supabase
+          .from("songs")
+          .select("*, artist:artists(*), anime:animes(*)")
+          .order("year", { ascending: true })
+          .range(from, to);
+
+        if (error) {
+          this.error = error.message;
+          this.isLoading = false;
+          return;
+        }
+
+        allSongs.push(...((data as ISong[]) ?? []));
+        hasMore = (data?.length ?? 0) === PAGE_SIZE;
+        page += 1;
       }
 
+      this.listSong = allSongs;
       this.isLoading = false;
     },
 
@@ -35,11 +52,11 @@ export const useSongsStore = defineStore('songs', {
       const endYear = decade + 9;
 
       const { data, error } = await supabase
-        .from('songs')
-        .select('*, artist:artists(*), anime:animes(*)')
-        .gte('year', startYear)
-        .lte('year', endYear)
-        .order('year', { ascending: true });
+        .from("songs")
+        .select("*, artist:artists(*), anime:animes(*)")
+        .gte("year", startYear)
+        .lte("year", endYear)
+        .order("year", { ascending: true });
 
       if (error) {
         this.error = error.message;
@@ -57,11 +74,9 @@ export const useSongsStore = defineStore('songs', {
       }
 
       const { data, error } = await supabase
-        .from('songs')
-        .select('*, artist:artists(*), anime:animes(*)')
-        .or(
-          `title.ilike.%${trimmed}%,title_jp.ilike.%${trimmed}%`,
-        );
+        .from("songs")
+        .select("*, artist:artists(*), anime:animes(*)")
+        .or(`title.ilike.%${trimmed}%,title_jp.ilike.%${trimmed}%`);
 
       if (error) {
         return [];
@@ -71,9 +86,12 @@ export const useSongsStore = defineStore('songs', {
       const listResult = ((data as ISong[]) ?? []).filter((song) => {
         const lowerQuery = trimmed.toLowerCase();
         const matchTitle = song.title.toLowerCase().includes(lowerQuery);
-        const matchTitleJp = song.title_jp?.toLowerCase().includes(lowerQuery) ?? false;
-        const matchArtist = song.artist?.name.toLowerCase().includes(lowerQuery) ?? false;
-        const matchAnime = song.anime?.title.toLowerCase().includes(lowerQuery) ?? false;
+        const matchTitleJp =
+          song.title_jp?.toLowerCase().includes(lowerQuery) ?? false;
+        const matchArtist =
+          song.artist?.name.toLowerCase().includes(lowerQuery) ?? false;
+        const matchAnime =
+          song.anime?.title.toLowerCase().includes(lowerQuery) ?? false;
         return matchTitle || matchTitleJp || matchArtist || matchAnime;
       });
 

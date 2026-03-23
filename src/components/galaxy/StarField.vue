@@ -2,7 +2,7 @@
 // StarField — renders all songs as a single InstancedMesh in the TresJS scene.
 // Must be placed inside a TresCanvas (child of GalaxyScene).
 
-import { ref, shallowRef, computed, watch, onMounted } from 'vue';
+import { ref, shallowRef, triggerRef, computed, watch, onMounted, markRaw } from 'vue';
 import * as THREE from 'three';
 import { useLoop } from '@tresjs/core';
 import { useSongsStore } from '@/stores/songs';
@@ -100,7 +100,8 @@ const buildMesh = () => {
   listBaseScale.value = baseScales;
   listBaseColor.value = baseColors;
   listStarWorldPosition.value = worldPositions;
-  instancedMesh.value = mesh;
+  instancedMesh.value = markRaw(mesh);
+  triggerRef(instancedMesh);
 
   // Re-apply active star highlight after mesh rebuild
   previousActiveInstanceId = null;
