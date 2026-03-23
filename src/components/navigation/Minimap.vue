@@ -8,7 +8,7 @@ import type { TGenre } from '@/types';
 const galaxyStore = useGalaxyStore();
 const songsStore = useSongsStore();
 
-const CANVAS_SIZE = 160;
+const CANVAS_SIZE = 120;
 const R_MAX = 500;
 const TOTAL_SPAN_YEARS = 46;
 const MAX_ANGLE_DEG = 1620;
@@ -236,8 +236,8 @@ const onMinimapClick = (e: MouseEvent) => {
 
 .minimap-canvas {
   display: block;
-  width: 160px;
-  height: 160px;
+  width: 120px;
+  height: 120px;
   cursor: crosshair;
 }
 

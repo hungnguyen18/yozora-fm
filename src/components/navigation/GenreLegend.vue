@@ -6,15 +6,15 @@ const listGenreEntry = Object.entries(GENRE_COLOR_MAP) as [TGenre, string][];
 
 <template>
   <div class="genre-legend">
-    <span class="genre-legend-title">Genres</span>
     <div
       v-for="[genre, color] in listGenreEntry"
       :key="genre"
       class="genre-legend-item"
+      :title="genre"
     >
       <span
         class="genre-legend-dot"
-        :style="{ backgroundColor: color, boxShadow: `0 0 6px ${color}88` }"
+        :style="{ backgroundColor: color, boxShadow: `0 0 5px ${color}66` }"
       />
       <span class="genre-legend-label">{{ genre }}</span>
     </div>
@@ -24,59 +24,36 @@ const listGenreEntry = Object.entries(GENRE_COLOR_MAP) as [TGenre, string][];
 <style scoped>
 .genre-legend {
   position: fixed;
-  bottom: 1.25rem;
-  left: 1.25rem;
+  bottom: 5rem;
+  left: 0.75rem;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.625rem;
-  border: 1px solid rgba(79, 70, 229, 0.25);
-  background: rgba(20, 21, 41, 0.7);
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(13, 14, 34, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.2),
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    0 0 40px rgba(79, 70, 229, 0.06);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.genre-legend:hover {
-  border-color: rgba(79, 70, 229, 0.45);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.2),
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    0 0 40px rgba(79, 70, 229, 0.12);
-}
-
-.genre-legend-title {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.625rem;
-  font-weight: 500;
-  color: #9b9bb4;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.125rem;
+  border: 1px solid rgba(155, 155, 180, 0.06);
 }
 
 .genre-legend-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 6px;
 }
 
 .genre-legend-dot {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 6px;
+  height: 6px;
   border-radius: 9999px;
   flex-shrink: 0;
 }
 
 .genre-legend-label {
-  font-size: 0.75rem;
-  color: rgba(232, 232, 240, 0.75);
+  font-size: 0.625rem;
+  color: rgba(155, 155, 180, 0.6);
   text-transform: capitalize;
   letter-spacing: 0.02em;
 }

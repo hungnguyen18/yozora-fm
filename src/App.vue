@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Yozora.fm — root application shell
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import GalaxyScene from '@/components/galaxy/GalaxyScene.vue';
 import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';
@@ -11,6 +11,7 @@ import SearchBar from '@/components/navigation/SearchBar.vue';
 import AuthButton from '@/components/ui/AuthButton.vue';
 import UserMenu from '@/components/ui/UserMenu.vue';
 import LoadingScreen from '@/components/ui/LoadingScreen.vue';
+import { Eye, EyeOff } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useSongsStore } from '@/stores/songs';
 import { useGalaxyStore } from '@/stores/galaxy';
@@ -29,6 +30,48 @@ useRouting();
 usePageTitle();
 
 const isLoading = computed(() => songsStore.isLoading);
+
+// ── UI Visibility: auto-hide after idle, toggle with H key ──
+const isUIVisible = ref(true);
+const isUILocked = ref(false); // user manually toggled
+const IDLE_TIMEOUT_MS = 4000;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+const showUI = (): void => {
+  if (isUILocked.value) { return; }
+  isUIVisible.value = true;
+  if (idleTimer) { clearTimeout(idleTimer); }
+  idleTimer = setTimeout(() => {
+    if (!isUILocked.value) {
+      isUIVisible.value = false;
+    }
+  }, IDLE_TIMEOUT_MS);
+};
+
+const toggleUI = (): void => {
+  isUILocked.value = !isUILocked.value;
+  isUIVisible.value = isUILocked.value;
+  if (idleTimer) { clearTimeout(idleTimer); }
+};
+
+const onKeyDown = (e: KeyboardEvent): void => {
+  if (e.key === 'h' || e.key === 'H') {
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') { return; }
+    toggleUI();
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown);
+  // Start idle timer
+  showUI();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown);
+  if (idleTimer) { clearTimeout(idleTimer); }
+});
 
 // Format song count with locale separators (e.g. "9,111")
 const songCountLabel = computed(() => {
@@ -58,7 +101,6 @@ onMounted(async () => {
     authStore.initAuth(),
   ]);
 
-  // Auto-dismiss onboarding after 5 seconds once loading completes
   if (isOnboardingVisible.value) {
     onboardingTimer = setTimeout(dismissOnboarding, 5000);
   }
@@ -66,33 +108,88 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="w-screen h-screen overflow-hidden bg-[#0A0B1A] relative">
+  <div
+    class="w-screen h-screen overflow-hidden bg-[#0A0B1A] relative"
+    @mousemove="showUI"
+  >
     <LoadingScreen :is-loading="isLoading" />
 
     <GalaxyScene @pointerdown="dismissOnboarding" @wheel="dismissOnboarding" />
     <DetailPanel />
     <PipPlayer />
-    <SearchBar />
-    <Minimap />
-    <GenreLegend />
-    <RandomPlayButton />
-    <AuthButton v-if="!authStore.isAuthenticated" />
-    <UserMenu v-else />
 
-    <!-- Onboarding tooltip: first-visit hint, auto-dismisses after 5s -->
+    <!-- Overlay UI — fades on idle, toggle with H key -->
+    <div class="overlay-ui" :class="{ 'overlay-ui--hidden': !isUIVisible }">
+      <SearchBar />
+      <Minimap />
+      <GenreLegend />
+      <RandomPlayButton />
+      <AuthButton v-if="!authStore.isAuthenticated" />
+      <UserMenu v-else />
+    </div>
+
+    <!-- UI toggle button — always visible -->
+    <button
+      class="ui-toggle"
+      :title="isUILocked ? 'Show UI (H)' : 'Hide UI (H)'"
+      @click="toggleUI"
+    >
+      <EyeOff v-if="!isUIVisible" :size="14" />
+      <Eye v-else :size="14" />
+    </button>
+
+    <!-- Onboarding tooltip -->
     <Transition name="onboarding-fade">
       <div
         v-if="isOnboardingVisible && !isLoading"
         class="onboarding-tooltip"
         @click="dismissOnboarding"
       >
-        {{ songCountLabel }} &bull; Scroll to zoom &bull; Drag to pan &bull; Click a star to listen
+        {{ songCountLabel }} &bull; Scroll to zoom &bull; Drag to pan &bull; Click a star &bull; Press H to hide UI
       </div>
     </Transition>
   </div>
 </template>
 
 <style scoped>
+/* ── Overlay UI wrapper: fades all navigation elements together ── */
+.overlay-ui {
+  transition: opacity 0.4s ease;
+}
+
+.overlay-ui--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── UI toggle button: always visible, bottom-left corner ── */
+.ui-toggle {
+  position: fixed;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  z-index: 45;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(155, 155, 180, 0.1);
+  background: rgba(13, 14, 34, 0.6);
+  color: rgba(155, 155, 180, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ui-toggle:hover {
+  color: rgba(232, 232, 240, 0.8);
+  border-color: rgba(155, 155, 180, 0.25);
+  background: rgba(13, 14, 34, 0.85);
+}
+
+/* ── Onboarding tooltip ── */
 .onboarding-tooltip {
   position: fixed;
   bottom: 6.5rem;
