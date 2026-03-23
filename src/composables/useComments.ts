@@ -67,19 +67,16 @@ export const useComments = (songId: Ref<number>) => {
   };
 
   const addComment = async (content: string) => {
-    if (!authStore.isAuthenticated || !authStore.user) {
-      return;
-    }
-
     const trimmed = content.trim().slice(0, 280);
 
     if (!trimmed) {
       return;
     }
 
+    // Anonymous comments allowed — user_id is null for guests
     await supabase.from("comments").insert({
       song_id: songId.value,
-      user_id: authStore.user.id,
+      user_id: authStore.user?.id ?? null,
       content: trimmed,
     });
 

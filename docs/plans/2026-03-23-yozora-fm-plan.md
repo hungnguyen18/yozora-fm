@@ -19,6 +19,7 @@
 ### Task 0.1: Git Init & GitHub Repository
 
 **Files:**
+
 - Create: `.gitignore`
 
 - [ ] **Step 1: Init git repo**
@@ -60,6 +61,7 @@ gh repo create yozora-fm --public --source=. --push
 ### Task 1.1: Project Setup & Dependencies
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `vite.config.ts`
 - Modify: `tsconfig.json`, `tsconfig.app.json`
@@ -79,6 +81,7 @@ npm install -D @types/three tailwindcss @tailwindcss/vite
 - [ ] **Step 2: Configure Tailwind with Yozora.fm brand tokens**
 
 Create `tailwind.config.ts` with brand colors from spec:
+
 ```ts
 // Colors: indigo #4F46E5, gold #F59E0B, coral #F97066
 // Background: deep-space #0A0B1A, midnight #141529
@@ -122,6 +125,7 @@ git add package.json package-lock.json vite.config.ts tailwind.config.ts src/ .e
 ### Task 1.2: TypeScript Types & Interfaces
 
 **Files:**
+
 - Create: `src/types/index.ts`
 
 - [ ] **Step 1: Define all interfaces**
@@ -147,6 +151,7 @@ git add src/types/index.ts && git commit -S -m "feat: add TypeScript interfaces 
 ### Task 1.3: Supabase Database Setup
 
 **Files:**
+
 - Create: `supabase/migrations/001_initial_schema.sql`
 - Create: `supabase/migrations/002_rls_policies.sql`
 
@@ -183,6 +188,7 @@ git add supabase/ && git commit -S -m "feat: add Supabase schema migration with 
 ### Task 1.4a: Seed Script — AnimeThemes Parser
 
 **Files:**
+
 - Create: `scripts/seed/types.ts` — raw API response types
 - Create: `scripts/seed/animethemes.ts` — fetch dump + parse
 
@@ -208,6 +214,7 @@ git add scripts/seed/types.ts scripts/seed/animethemes.ts && git commit -S -m "f
 ### Task 1.4b: Seed Script — AniList Enrichment
 
 **Files:**
+
 - Create: `scripts/seed/anilist.ts` — enrich metadata from AniList
 
 - [ ] **Step 1: Create `scripts/seed/anilist.ts`**
@@ -229,6 +236,7 @@ git add scripts/seed/anilist.ts && git commit -S -m "feat: add AniList enrichmen
 ### Task 1.4c: Seed Script — Spotify Enrichment
 
 **Files:**
+
 - Create: `scripts/seed/spotify.ts` — match songs for album art + spotify_uri
 
 - [ ] **Step 1: Create `scripts/seed/spotify.ts`**
@@ -251,6 +259,7 @@ git add scripts/seed/spotify.ts && git commit -S -m "feat: add Spotify enrichmen
 ### Task 1.4d: Seed Script — Upsert & Orchestration
 
 **Files:**
+
 - Create: `scripts/seed/upsert.ts` — batch upsert to Supabase
 - Create: `scripts/seed/index.ts` — orchestration
 - Modify: `package.json` — add `"seed"` script
@@ -262,10 +271,12 @@ git add scripts/seed/spotify.ts && git commit -S -m "feat: add Spotify enrichmen
 - Handle conflicts via ON CONFLICT DO UPDATE
 
 - [ ] **Step 2: Create `scripts/seed/index.ts`** — orchestrate pipeline:
+
 1. Parse AnimeThemes dump (animethemes.ts)
 2. Enrich with AniList (anilist.ts)
 3. Enrich with Spotify (spotify.ts) — optional, skip if no credentials
 4. Upsert to Supabase (upsert.ts)
+
 - Add progress logging at each stage
 
 - [ ] **Step 3: Add script to `package.json`**
@@ -291,6 +302,7 @@ git add scripts/seed/upsert.ts scripts/seed/index.ts package.json && git commit 
 ### Task 1.5: Pinia Stores & Realtime Composable
 
 **Files:**
+
 - Create: `src/stores/songs.ts`
 - Create: `src/stores/galaxy.ts`
 - Create: `src/stores/player.ts`
@@ -339,6 +351,7 @@ git add src/stores/ src/composables/useRealtime.ts && git commit -S -m "feat: ad
 ### Task 2.1: Basic TresJS Scene
 
 **Files:**
+
 - Create: `src/components/galaxy/GalaxyScene.vue`
 - Modify: `src/App.vue`
 
@@ -363,6 +376,7 @@ git add src/components/galaxy/ src/App.vue && git commit -S -m "feat: add basic 
 ### Task 2.2: Star Rendering with InstancedMesh
 
 **Files:**
+
 - Create: `src/components/galaxy/StarField.vue`
 - Create: `src/composables/useGalaxyLayout.ts`
 
@@ -397,6 +411,7 @@ git add src/components/galaxy/StarField.vue src/composables/useGalaxyLayout.ts &
 ### Task 2.3: Star Interaction (Hover + Click)
 
 **Files:**
+
 - Create: `src/composables/useStarInteraction.ts`
 - Modify: `src/components/galaxy/StarField.vue`
 - Modify: `src/components/galaxy/GalaxyScene.vue`
@@ -428,6 +443,7 @@ git add src/composables/useStarInteraction.ts src/components/galaxy/ && git comm
 ### Task 2.4: Background Nebula & Particle Dust
 
 **Files:**
+
 - Create: `src/components/galaxy/Nebula.vue`
 - Create: `src/components/galaxy/ParticleDust.vue`
 - Modify: `src/components/galaxy/GalaxyScene.vue`
@@ -459,6 +475,7 @@ git add src/components/galaxy/ public/textures/ && git commit -S -m "feat: add n
 ### Task 2.5: LOD System & Performance
 
 **Files:**
+
 - Create: `src/composables/useLOD.ts`
 - Modify: `src/components/galaxy/StarField.vue`
 
@@ -489,6 +506,7 @@ git add src/composables/useLOD.ts src/components/galaxy/ && git commit -S -m "fe
 ### Task 2.6: Navigation UI — Era Indicator + Minimap
 
 **Files:**
+
 - Create: `src/components/navigation/EraIndicator.vue`
 - Create: `src/components/navigation/Minimap.vue`
 - Modify: `src/App.vue`
@@ -523,6 +541,7 @@ git add src/components/navigation/ src/App.vue && git commit -S -m "feat: add er
 ### Task 3.1: Detail Panel Shell
 
 **Files:**
+
 - Create: `src/components/player/DetailPanel.vue`
 - Modify: `src/App.vue`
 
@@ -549,6 +568,7 @@ git add src/components/player/DetailPanel.vue src/App.vue && git commit -S -m "f
 ### Task 3.2: Video Player (AnimeThemes WebM)
 
 **Files:**
+
 - Create: `src/components/player/VideoPlayer.vue`
 - Create: `src/composables/usePlayer.ts`
 - Modify: `src/components/player/DetailPanel.vue`
@@ -583,6 +603,7 @@ git add src/components/player/VideoPlayer.vue src/composables/usePlayer.ts src/c
 ### Task 3.3: PiP (Picture-in-Picture) Mini Player
 
 **Files:**
+
 - Create: `src/components/player/PipPlayer.vue`
 - Modify: `src/composables/usePlayer.ts`
 - Modify: `src/App.vue`
@@ -616,6 +637,7 @@ git add src/components/player/PipPlayer.vue src/composables/usePlayer.ts src/App
 ### Task 3.4: Auto-play & Track Transitions
 
 **Files:**
+
 - Modify: `src/composables/usePlayer.ts`
 - Modify: `src/stores/player.ts`
 - Modify: `src/stores/galaxy.ts`
@@ -645,6 +667,7 @@ git add src/composables/ src/stores/ && git commit -S -m "feat: add auto-play wi
 ### Task 3.5: YouTube Fallback Player
 
 **Files:**
+
 - Create: `src/components/player/YouTubeFallback.vue`
 - Modify: `src/components/player/DetailPanel.vue`
 - Modify: `src/composables/usePlayer.ts`
@@ -675,6 +698,7 @@ git add src/components/player/ src/composables/ && git commit -S -m "feat: add Y
 ### Task 4.1: Authentication UI
 
 **Files:**
+
 - Create: `src/components/ui/AuthButton.vue`
 - Create: `src/components/ui/UserMenu.vue`
 - Modify: `src/stores/auth.ts`
@@ -701,6 +725,7 @@ git add src/components/ui/ src/stores/auth.ts src/App.vue && git commit -S -m "f
 ### Task 4.2: Iconic Vote System
 
 **Files:**
+
 - Create: `src/components/community/VoteButton.vue`
 - Create: `src/composables/useVote.ts`
 - Modify: `src/components/player/DetailPanel.vue`
@@ -732,6 +757,7 @@ git add src/components/community/VoteButton.vue src/composables/useVote.ts src/c
 ### Task 4.3: Trivia Section
 
 **Files:**
+
 - Create: `src/components/community/TriviaSection.vue`
 - Create: `src/composables/useTrivia.ts`
 - Modify: `src/components/player/DetailPanel.vue`
@@ -748,7 +774,7 @@ git add src/components/community/VoteButton.vue src/composables/useVote.ts src/c
 - "Add trivia" input (shown when authenticated)
 - Report button (subtle, on hover)
 
-- [ ] **Step 3: Add to DetailPanel below video/song info
+- [ ] \*\*Step 3: Add to DetailPanel below video/song info
 
 - [ ] **Step 4: Verify** — trivia displays, submit works, upvote count updates
 
@@ -763,6 +789,7 @@ git add src/components/community/ src/composables/useTrivia.ts src/components/pl
 ### Task 4.4: Comments Section
 
 **Files:**
+
 - Create: `src/components/community/CommentList.vue`
 - Create: `src/composables/useComments.ts`
 - Modify: `src/components/player/DetailPanel.vue`
@@ -780,7 +807,7 @@ git add src/components/community/ src/composables/useTrivia.ts src/components/pl
 - Delete button on own comments
 - Report button (subtle)
 
-- [ ] **Step 3: Add to DetailPanel below trivia
+- [ ] \*\*Step 3: Add to DetailPanel below trivia
 
 - [ ] **Step 4: Verify** — comments CRUD works, pagination loads more
 
@@ -795,6 +822,7 @@ git add src/components/community/ src/composables/useComments.ts src/components/
 ### Task 4.5: Search
 
 **Files:**
+
 - Create: `src/components/navigation/SearchBar.vue`
 - Modify: `src/stores/songs.ts`
 - Modify: `src/App.vue`
@@ -829,6 +857,7 @@ git add src/components/navigation/SearchBar.vue src/stores/songs.ts src/App.vue 
 ### Task 5.1: Artist Constellation Lines
 
 **Files:**
+
 - Create: `src/components/galaxy/ConstellationLines.vue`
 - Modify: `src/stores/galaxy.ts`
 
@@ -856,6 +885,7 @@ git add src/components/galaxy/ConstellationLines.vue src/stores/galaxy.ts && git
 ### Task 5.2: Era Summary Overlay
 
 **Files:**
+
 - Create: `src/components/navigation/EraSummary.vue`
 - Modify: `src/stores/galaxy.ts`
 
@@ -885,6 +915,7 @@ git add src/components/navigation/EraSummary.vue src/stores/galaxy.ts && git com
 ### Task 6.1: Playing Star Effects
 
 **Files:**
+
 - Modify: `src/components/galaxy/StarField.vue`
 - Create: `src/components/galaxy/RippleEffect.vue`
 
@@ -908,6 +939,7 @@ git add src/components/galaxy/ && git commit -S -m "feat: add playing star rippl
 ### Task 6.2: Camera Trail Effect
 
 **Files:**
+
 - Modify: `src/stores/galaxy.ts`
 - Modify: `src/components/galaxy/StarField.vue`
 
@@ -929,6 +961,7 @@ git add src/stores/galaxy.ts src/components/galaxy/StarField.vue && git commit -
 ### Task 6.3: Loading & Onboarding
 
 **Files:**
+
 - Create: `src/components/ui/LoadingScreen.vue`
 - Modify: `src/App.vue`
 
@@ -958,6 +991,7 @@ git add src/components/ui/LoadingScreen.vue src/App.vue && git commit -S -m "fea
 ### Task 7.1: Spotify OAuth + Web Playback
 
 **Files:**
+
 - Create: `src/composables/useSpotify.ts`
 - Create: `src/components/player/SpotifyPlayer.vue`
 - Modify: `src/components/player/DetailPanel.vue`
@@ -1006,6 +1040,7 @@ git add src/composables/useSpotify.ts src/components/player/ src/stores/auth.ts 
 ### Task 8.2: Supabase Edge Function — Weekly Sync
 
 **Files:**
+
 - Create: `supabase/functions/weekly-sync/index.ts`
 
 - [ ] **Step 1: Create edge function** — checks AnimeThemes for new seasonal themes, enriches with AniList, upserts to DB
@@ -1019,18 +1054,69 @@ git add supabase/functions/ && git commit -S -m "feat: add weekly sync edge func
 
 ---
 
+## Phase 4.5: Icon Package + VueUse Cleanup
+
+> Replace all hardcoded SVG icons with an icon package. Maximize @vueuse/core usage.
+
+### Task 4.5a: Install Icon Package + Replace Hardcoded SVGs
+
+**Files:**
+
+- Modify: `package.json`
+- Modify: All components with hardcoded SVGs (SearchBar, VideoPlayer, AuthButton, UserMenu, VoteButton, DetailPanel, PipPlayer, etc.)
+
+- [ ] **Step 1: Install `lucide-vue-next`** (lightweight, tree-shakeable icon library)
+
+```bash
+npm install lucide-vue-next
+```
+
+- [ ] **Step 2: Audit all components for hardcoded SVGs** — grep for `<svg` and `<path` across `src/components/`
+
+- [ ] **Step 3: Replace all hardcoded SVGs** with Lucide icons:
+- Search icon → `<Search />`
+- Close/X icon → `<X />`
+- Play/Pause → `<Play />`, `<Pause />`
+- Volume → `<Volume2 />`, `<VolumeX />`
+- Fullscreen → `<Maximize />`, `<Minimize />`
+- Star/Vote → `<Star />`
+- Expand → `<Maximize2 />`
+- Report/Flag → `<Flag />`
+- Trash/Delete → `<Trash2 />`
+- ChevronDown → `<ChevronDown />`
+- User → `<User />`
+- ThumbsUp → `<ThumbsUp />`
+- Lightbulb → `<Lightbulb />`
+
+- [ ] **Step 4: Refactor VueUse usage** — replace manual implementations with:
+- `useTimeAgo` for comment timestamps
+- `useIntersectionObserver` for lazy loading
+- `useClipboard` if copy functionality exists
+- `onClickOutside` for dropdown close (AuthButton, UserMenu)
+- `useLocalStorage` for persistent preferences (replace manual localStorage)
+
+- [ ] **Step 5: Verify build**
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A && git commit -S -m "refactor: replace hardcoded SVGs with lucide-vue-next, optimize VueUse usage"
+```
+
+---
+
 ## Phase Summary
 
-| Phase | Scope | Dependency |
-|-------|-------|-----------|
-| **0. Git Init** | Git repo, GitHub, .gitignore | None |
-| **1. Foundation** | Project setup, DB, seed data, stores, realtime | Phase 0 |
-| **2. Galaxy** | 3D spiral, stars, interaction, LOD, navigation | Phase 1 |
-| **3. Player** | Detail panel, video player, PiP, auto-play, YouTube fallback | Phase 2 |
-| **4. Community** | Auth, votes, trivia, comments, search | Phase 1 + 3 |
-| **5. Constellation** | Artist lines, era summary | Phase 2 |
-| **6. Polish** | Animations, effects, loading screen | Phase 2 + 3 |
-| **7. Spotify** | Optional audio mode | Phase 3 |
-| **8. Deploy** | Vercel, edge function | All |
+| Phase                | Scope                                                        | Dependency  |
+| -------------------- | ------------------------------------------------------------ | ----------- |
+| **0. Git Init**      | Git repo, GitHub, .gitignore                                 | None        |
+| **1. Foundation**    | Project setup, DB, seed data, stores, realtime               | Phase 0     |
+| **2. Galaxy**        | 3D spiral, stars, interaction, LOD, navigation               | Phase 1     |
+| **3. Player**        | Detail panel, video player, PiP, auto-play, YouTube fallback | Phase 2     |
+| **4. Community**     | Auth, votes, trivia, comments, search                        | Phase 1 + 3 |
+| **4.5 Cleanup**      | Icon package, VueUse optimization                            | Phase 4     |
+| **5. Constellation** | Artist lines, era summary                                    | Phase 2     |
+| **6. Polish**        | Animations, effects, loading screen                          | Phase 2 + 3 |
+| **7. Spotify**       | Optional audio mode                                          | Phase 3     |
+| **8. Deploy**        | Vercel, edge function                                        | All         |
 
 Each phase produces a working, testable increment. Phase 0-3 = core experience. Phase 4-6 = community + polish. Phase 7-8 = extras + ship.

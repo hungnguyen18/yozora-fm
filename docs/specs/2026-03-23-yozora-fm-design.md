@@ -10,11 +10,13 @@
 **Yozora.fm** (夜空.fm — "Night Sky Radio") is a web-based interactive experience that visualizes the entire history of anime music as a spiral galaxy. Each song is a star. Users zoom, pan, and orbit through decades of anime openings and endings — listening to full tracks, discovering artist constellations, and contributing trivia and votes.
 
 **Goals:**
+
 - Personal enjoyment: a beautiful, engaging way to explore anime music
 - Community: lightweight interactions (vote, trivia, comment) that enrich the data over time
 - Unique UI/UX: the galaxy metaphor must feel novel and delightful, not a gimmick
 
 **Non-goals:**
+
 - Not a social platform (no profiles, follows, messaging)
 - Not a music streaming service (leverages YouTube/AnimeThemes for playback)
 - Not a comprehensive anime database (focused on OP/ED music only)
@@ -29,23 +31,24 @@
 > Anime music không chỉ là nhạc nền. Nó là soundtrack của tuổi trẻ, là tiếng mở đầu khiến tim đập nhanh, là giai điệu ending khiến mắt cay.
 > **Yozora.fm** là bầu trời đêm nơi tất cả những ngôi sao ấy tỏa sáng cùng nhau — một đài radio vũ trụ cho bạn khám phá lại, lắng nghe lại, và chia sẻ cùng cộng đồng.
 
-**Tagline:** *"Every song is a star. Tune in to the night sky of your memories."*
+**Tagline:** _"Every song is a star. Tune in to the night sky of your memories."_
 
 **Brand personality:** Vibrant, energetic, playful — nhưng có chiều sâu cảm xúc. Không quá nghiêm túc, không quá trẻ con. Giống cảm giác khi nghe lại bài OP yêu thích sau nhiều năm — vừa phấn khích vừa xúc động. Tên "Yozora.fm" gợi lên hình ảnh nằm ngắm sao đêm, mỗi ngôi sao phát ra một giai điệu quen thuộc — vừa cosmic vừa intimate.
 
 ### 2.2 Color Palette
 
-| Role | Color | Hex | Usage |
-|------|-------|-----|-------|
-| Primary | Indigo | `#4F46E5` | Navigation, interactive elements, links, primary buttons |
-| Secondary | Gold | `#F59E0B` | Stars highlight, iconic badges, accent text, hover states |
-| Accent | Coral | `#F97066` | Notifications, active states, error, community actions (vote, trivia) |
-| Background | Deep Space | `#0A0B1A` | Galaxy background, panels |
-| Surface | Midnight | `#141529` | Cards, detail panel, overlays |
-| Text Primary | Soft White | `#E8E8F0` | Body text, labels |
-| Text Secondary | Muted Lavender | `#9B9BB4` | Secondary info, timestamps, placeholders |
+| Role           | Color          | Hex       | Usage                                                                 |
+| -------------- | -------------- | --------- | --------------------------------------------------------------------- |
+| Primary        | Indigo         | `#4F46E5` | Navigation, interactive elements, links, primary buttons              |
+| Secondary      | Gold           | `#F59E0B` | Stars highlight, iconic badges, accent text, hover states             |
+| Accent         | Coral          | `#F97066` | Notifications, active states, error, community actions (vote, trivia) |
+| Background     | Deep Space     | `#0A0B1A` | Galaxy background, panels                                             |
+| Surface        | Midnight       | `#141529` | Cards, detail panel, overlays                                         |
+| Text Primary   | Soft White     | `#E8E8F0` | Body text, labels                                                     |
+| Text Secondary | Muted Lavender | `#9B9BB4` | Secondary info, timestamps, placeholders                              |
 
 **Gradient usage:**
+
 - Galaxy nebula: radial gradients mixing Indigo → Deep Purple (`#7C3AED`) → Coral (subtle, per era)
 - Star glow: Gold → White center
 - Buttons/CTAs: Indigo → slightly lighter Indigo (`#6366F1`)
@@ -57,23 +60,25 @@
 **Icon mark:** Spiral star — a five-pointed star with spiral trails extending from it, forming a mini galaxy. Used as favicon, app icon, loading spinner (animated rotation).
 
 **Logo variants:**
+
 - **Full:** Icon + logotype side by side (horizontal)
 - **Stacked:** Icon above logotype (for square spaces)
 - **Icon only:** Spiral star mark (favicon, small sizes)
 - **Wordmark only:** "Yozora.fm" text (for inline/header use)
 
 **Logo colors:**
+
 - On dark background: Soft White text + Gold icon
 - On light background (rare): Indigo text + Indigo icon
 
 ### 2.4 Typography
 
-| Role | Font | Fallback |
-|------|------|----------|
-| Logo / Display | **Space Grotesk** (Google Fonts) | system-ui |
-| Headings | **Space Grotesk** semibold | system-ui |
-| Body | **Inter** | system-ui |
-| Monospace (metadata) | **JetBrains Mono** | monospace |
+| Role                 | Font                             | Fallback  |
+| -------------------- | -------------------------------- | --------- |
+| Logo / Display       | **Space Grotesk** (Google Fonts) | system-ui |
+| Headings             | **Space Grotesk** semibold       | system-ui |
+| Body                 | **Inter**                        | system-ui |
+| Monospace (metadata) | **JetBrains Mono**               | monospace |
 
 Space Grotesk has a geometric, slightly futuristic feel that aligns with the cosmic theme while remaining highly readable. Inter for body text ensures readability at small sizes.
 
@@ -91,6 +96,7 @@ The main view is a **top-down spiral galaxy**. The spiral has ~4-5 arms, each ar
 - **Constellation lines** = faint lines connecting stars by the same artist. Hover on a star → its artist's constellation highlights
 
 **Spiral position algorithm:**
+
 - Each song has a `year` (e.g., 1995) and an index within that year (sorted by anime season → alphabetical)
 - **Angle (θ):** mapped from year. 1980 = outermost angle (0°), 2026 = center (~4.5 full rotations = ~1620°). Formula: `θ = ((year - 1980) / 46) * 1620°`
 - **Radius (r):** inversely proportional to year. `r = R_max * (1 - (year - 1980) / 46)` where R_max is the galaxy outer radius
@@ -132,6 +138,7 @@ Estimated dataset: 5,000-15,000 songs. LOD strategy to maintain 60fps:
 Clicking a star → star zooms in + glows, a **detail panel** slides in from the right (~400px width). Galaxy background dims slightly.
 
 **Panel contents (top to bottom):**
+
 - **Video player** (primary) — AnimeThemes WebM playing the original OP/ED sequence. Rounded corners, glow border in the star's genre color. Song info (title, artist, anime) overlaid semi-transparent at bottom of video
 - Below video: anime cover art (small), year, OP/ED type + sequence
 - Genre tags (clickable → highlights all same-genre stars on galaxy)
@@ -141,18 +148,21 @@ Clicking a star → star zooms in + glows, a **detail panel** slides in from the
 ### 4.2 Playback
 
 **Source priority (hybrid tiered):**
+
 1. **AnimeThemes WebM** (default) — original OP/ED video from the anime, played via HTML `<video>` tag. Covers ~14,000+ themes. This is the primary experience: users watch the actual anime opening/ending while listening. Full control over playback: volume, crossfade, playback rate, Picture-in-Picture
 2. **Spotify Web Playback SDK** (optional upgrade) — user can connect Spotify Premium account via "Connect Spotify" button in settings. When active, switches audio to Spotify stream (higher audio quality). Video player switches to: album art + real-time waveform visualization + particle animation reacting to audio
 3. **YouTube embed** (fallback) — for songs not on AnimeThemes. Embedded as visible player (>= 200x200, YouTube ToS compliant). Used only when AnimeThemes WebM is unavailable
 4. **External links** (last resort) — if no playable source: show beautiful card with album art + "Listen on Spotify / YouTube / Apple Music" buttons with hover animation
 
 **Video player design:**
+
 - Embedded in detail panel, 16:9 aspect ratio, fills panel width (~400x225)
 - Rounded corners (12px), genre-colored glow border (subtle, animated pulse while playing)
 - Custom controls overlay: play/pause, progress bar, volume slider, fullscreen toggle — styled to match Yozora.fm brand (Indigo/Gold), not browser defaults
 - On hover: controls fade in. When idle: controls fade out, pure video experience
 
 **Mini player (Picture-in-Picture):**
+
 - When user navigates away from detail panel (clicks another area of galaxy), panel slides out and player becomes a **floating PiP window** at bottom-left (~240x135, 16:9)
 - Video continues playing — user sees the OP/ED sequence while exploring the galaxy
 - PiP has: drag to reposition, close button (stops playback), expand button (reopens detail panel), song title + artist below video
@@ -160,23 +170,27 @@ Clicking a star → star zooms in + glows, a **detail panel** slides in from the
 - When in Spotify mode: PiP shows album art + mini waveform instead of video
 
 **Crossfade & transitions:**
+
 - **2-second audio crossfade** between tracks — possible because HTML `<video>` allows programmatic volume control. Two `<video>` elements: one fading out, one fading in
 - **Visual transition:** old star dims glow, camera smooth-pans to new star, new star lights up as new video fades in
 - Crossfade happens in PiP too — seamless experience
 
 **Auto-play:**
+
 - When a song ends, auto-advance to nearest star on spiral (same era)
 - Camera smooth-pans to follow. Galaxy stars along the path subtly brighten as camera passes (trail effect)
 - Works reliably with HTML `<video>` — no browser autoplay restrictions after first user interaction
 - User can disable auto-play in settings. When disabled, player shows "Up next: [song name]" card with play button
 
 **Spotify mode details:**
+
 - Settings page: "Connect Spotify" button → Spotify OAuth flow → stores token in Supabase user metadata
 - When connected, a toggle appears on player: "Video mode" (AnimeThemes) / "Audio mode" (Spotify)
 - Audio mode: video area becomes a visual canvas — album art centered, waveform ring around it, particles floating outward from center, all reacting to audio frequency data via Spotify Web Playback SDK's `getAudioAnalysis()`
 - If a song is not on Spotify: auto-falls back to AnimeThemes WebM with a subtle toast "Playing from AnimeThemes"
 
 **Fallback behavior:**
+
 - AnimeThemes unavailable → YouTube embed (>= 200x200) if youtube_id exists
 - YouTube unavailable → external link card (Spotify/YouTube/Apple Music buttons)
 - No source at all → star still visible on galaxy, detail panel shows metadata + community content + "No playback available — help us by suggesting a link" (community contribution)
@@ -190,7 +204,7 @@ Clicking a star → star zooms in + glows, a **detail panel** slides in from the
 
 - **Supabase Auth** with Google and GitHub OAuth providers
 - Minimal profile: nickname + avatar (pulled from OAuth provider)
-- Guests can browse + listen. Login required to vote/comment/submit trivia
+- Guests can browse + listen + comment (anonymous comments allowed). Login required to vote/submit trivia
 
 ### 5.2 Iconic Vote
 
@@ -209,8 +223,9 @@ Clicking a star → star zooms in + glows, a **detail panel** slides in from the
 ### 5.4 Comments
 
 - Short comments (max 280 characters)
+- **Anonymous comments allowed** — no login required to post. Guest comments use a random nickname ("Anonymous Star", "Cosmic Listener", etc.)
+- Authenticated users see their nickname + avatar; can delete own comments
 - Show 5 most recent, "Load more" pagination
-- Authenticated users can delete own comments
 - Report button for spam
 
 ### 5.5 Search
@@ -225,6 +240,7 @@ Clicking a star → star zooms in + glows, a **detail panel** slides in from the
 ### 5.6 Era Summary
 
 When zoomed at era level (decade), a light overlay displays:
+
 - Era name + decade
 - Total song count
 - Top artist (most songs)
@@ -363,17 +379,18 @@ FOR EACH ROW EXECUTE FUNCTION update_trivia_upvote_count();
 
 ### 6.3 Row Level Security (RLS)
 
-| Table | Public read | Auth write | Constraint |
-|-------|------------|------------|------------|
-| songs, artists, animes | Yes | Admin only | — |
-| votes | Count only | Insert/delete own | Unique user+song |
-| trivia | Where status=approved | Insert own | — |
-| comments | Where status=visible | Insert/delete own | — |
-| trivia_upvotes | Count only | Insert/delete own | Unique user+trivia |
+| Table                  | Public read           | Auth write                       | Constraint         |
+| ---------------------- | --------------------- | -------------------------------- | ------------------ |
+| songs, artists, animes | Yes                   | Admin only                       | —                  |
+| votes                  | Count only            | Insert/delete own                | Unique user+song   |
+| trivia                 | Where status=approved | Insert own                       | —                  |
+| comments               | Where status=visible  | Insert (anon + auth), delete own | —                  |
+| trivia_upvotes         | Count only            | Insert/delete own                | Unique user+trivia |
 
 ### 6.4 Data Sources & Sync
 
 **Initial seed (Node.js script):**
+
 1. Download **AnimeThemes database dump** (`/dump` endpoint) — full dataset in one shot, no rate limit concerns. Contains: song titles, artists, anime associations, OP/ED type, video slugs (→ WebM URLs at `v.animethemes.moe`)
 2. Enrich with metadata from **AniList API** (cover art, anime year, season) — match via AnimeThemes' AniList external resource IDs
 3. Match songs on **Spotify API** via client-credentials auth for album art + release date + spotify_uri (cache results locally as JSON). Optional enrichment — AniList cover art is the primary fallback
@@ -382,6 +399,7 @@ FOR EACH ROW EXECUTE FUNCTION update_trivia_upvote_count();
 6. Upsert everything into Supabase
 
 **Ongoing sync (Supabase Edge Function, weekly cron):**
+
 - Check AnimeThemes API for new seasonal anime themes (incremental, within 90 req/min rate limit)
 - Enrich new songs with AniList + Spotify metadata
 - Auto-insert into Supabase
@@ -392,18 +410,18 @@ FOR EACH ROW EXECUTE FUNCTION update_trivia_upvote_count();
 
 ## 7. Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend framework | Vue 3 + Vite + TypeScript |
-| 3D rendering | TresJS (Three.js Vue wrapper) |
-| 2D effects | Canvas API for lightweight particles, CSS animations |
-| State management | Pinia |
-| Styling | UnoCSS or Tailwind CSS |
-| Backend / DB / Auth | Supabase (PostgreSQL + Auth + Realtime + Edge Functions) via MCP |
-| Music playback | AnimeThemes WebM via HTML `<video>` (default) + Spotify Web Playback SDK (optional upgrade) + YouTube IFrame API (fallback) |
-| Metadata source | AnimeThemes API + AniList API (primary). Spotify API for enrichment (album art, release dates) |
-| Deployment | Vercel (frontend) + Supabase Cloud (backend) |
-| Seed tooling | Node.js + tsx |
+| Layer               | Technology                                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Frontend framework  | Vue 3 + Vite + TypeScript                                                                                                   |
+| 3D rendering        | TresJS (Three.js Vue wrapper)                                                                                               |
+| 2D effects          | Canvas API for lightweight particles, CSS animations                                                                        |
+| State management    | Pinia                                                                                                                       |
+| Styling             | UnoCSS or Tailwind CSS                                                                                                      |
+| Backend / DB / Auth | Supabase (PostgreSQL + Auth + Realtime + Edge Functions) via MCP                                                            |
+| Music playback      | AnimeThemes WebM via HTML `<video>` (default) + Spotify Web Playback SDK (optional upgrade) + YouTube IFrame API (fallback) |
+| Metadata source     | AnimeThemes API + AniList API (primary). Spotify API for enrichment (album art, release dates)                              |
+| Deployment          | Vercel (frontend) + Supabase Cloud (backend)                                                                                |
+| Seed tooling        | Node.js + tsx                                                                                                               |
 
 ### 7.1 Project Structure
 

@@ -21,7 +21,7 @@ const isSubmitting = ref(false);
 const charCount = computed(() => newContent.value.length);
 const isOverLimit = computed(() => charCount.value > 280);
 const canSubmit = computed(
-  () => authStore.isAuthenticated && charCount.value > 0 && !isOverLimit.value && !isSubmitting.value,
+  () => charCount.value > 0 && !isOverLimit.value && !isSubmitting.value,
 );
 
 const formatRelativeTime = (createdAt: string): string => {
@@ -72,7 +72,7 @@ const handleReport = async (commentId: number) => {
     <h3 class="comment-list__heading">Comments</h3>
 
     <!-- Comment input — visible only when authenticated -->
-    <div v-if="authStore.isAuthenticated" class="comment-form">
+    <div class="comment-form">
       <textarea
         v-model="newContent"
         class="comment-form__textarea"
