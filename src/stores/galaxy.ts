@@ -62,6 +62,11 @@ export const useGalaxyStore = defineStore("galaxy", {
     lodTier: "far" as TLodTier,
     // Maps artistId → list of songIds for artists with 2+ songs
     constellationData: new Map<number, number[]>(),
+    // Camera trail effect state — set when flyToStar is called during auto-play
+    trailStart: null as { x: number; y: number } | null,
+    trailEnd: null as { x: number; y: number } | null,
+    trailProgress: 0,
+    isTrailActive: false,
   }),
   getters: {
     currentEra: (state): IEra | null => state.focusedEra,
@@ -155,6 +160,36 @@ export const useGalaxyStore = defineStore("galaxy", {
         this.selectedSongId = songId;
         return;
       }
+
+      // Record trail start (current camera pan position) and end (target star)
+      // so StarField can brighten stars swept by the camera path.
+      this.trailStart = { x: this.panX, y: this.panY };
+      this.trailEnd = { x: target.x, y: target.y };
+      this.trailProgress = 0;
+      this.isTrailActive = true;
+
+      // Animate trailProgress from 0 → 1 over ~1.5 seconds
+      const TRAIL_DURATION_MS = 1500;
+      const startTime = performance.now();
+
+      const animateTrail = () => {
+        const elapsed = performance.now() - startTime;
+        this.trailProgress = Math.min(elapsed / TRAIL_DURATION_MS, 1);
+
+        if (this.trailProgress < 1) {
+          requestAnimationFrame(animateTrail);
+        } else {
+          // Leave isTrailActive true briefly so StarField can finish fading stars back
+          setTimeout(() => {
+            this.isTrailActive = false;
+            this.trailStart = null;
+            this.trailEnd = null;
+            this.trailProgress = 0;
+          }, 600);
+        }
+      };
+
+      requestAnimationFrame(animateTrail);
 
       // Move camera pan to center on the target star.
       // The galaxy canvas reads panX/panY to translate the viewport.

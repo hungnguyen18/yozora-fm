@@ -4,13 +4,16 @@
 
 import { ref, computed, watch, onMounted } from 'vue';
 import * as THREE from 'three';
+import { useLoop } from '@tresjs/core';
 import { useSongsStore } from '@/stores/songs';
 import { usePlayerStore } from '@/stores/player';
+import { useGalaxyStore } from '@/stores/galaxy';
 import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
 import { useLOD } from '@/composables/useLOD';
 
 const songsStore = useSongsStore();
 const playerStore = usePlayerStore();
+const galaxyStore = useGalaxyStore();
 const { computeBuffers } = useGalaxyLayout();
 const { showLabels, labelVoteThreshold } = useLOD();
 
@@ -221,6 +224,100 @@ watch(
     previousActiveInstanceId = instanceId;
   },
 );
+
+// Camera trail effect — brightens stars swept by the camera path during flyToStar.
+// Per-instance fade progress: 0 = fully restored, 1 = fully brightened by trail.
+// Using a plain Float32Array (bypasses Vue reactivity) for per-frame performance.
+const TRAIL_RADIUS = 30;
+const TRAIL_FADE_DURATION = 0.5; // seconds to fade back after trail passes
+const trailColorHelper = new THREE.Color();
+
+// Per-instance trail brightness [0,1]: 1 = fully brightened, decays to 0 over fade duration
+let trailBrightness: Float32Array = new Float32Array(0);
+// Per-instance time (in seconds) since the trail last passed this star; -1 = never touched
+let trailPassTime: Float32Array = new Float32Array(0);
+
+// Allocate / reallocate trail arrays whenever the mesh is rebuilt
+watch(instancedMesh, (mesh) => {
+  if (!mesh) { return; }
+  const count = mesh.count;
+  trailBrightness = new Float32Array(count);
+  trailPassTime = new Float32Array(count).fill(-1);
+});
+
+const { onBeforeRender } = useLoop();
+
+onBeforeRender(({ delta }) => {
+  const mesh = instancedMesh.value;
+  if (!mesh || !mesh.instanceColor) { return; }
+
+  const worldPositions = listStarWorldPosition.value;
+  const baseColors = listBaseColor.value;
+  const count = mesh.count;
+
+  // Determine current trail head position via lerp when trail is active
+  let trailHeadX = 0;
+  let trailHeadY = 0;
+  let trailActive = false;
+
+  if (galaxyStore.isTrailActive && galaxyStore.trailStart && galaxyStore.trailEnd) {
+    const t = galaxyStore.trailProgress;
+    trailHeadX = galaxyStore.trailStart.x + (galaxyStore.trailEnd.x - galaxyStore.trailStart.x) * t;
+    trailHeadY = galaxyStore.trailStart.y + (galaxyStore.trailEnd.y - galaxyStore.trailStart.y) * t;
+    trailActive = true;
+  }
+
+  let needsUpdate = false;
+  const radiusSq = TRAIL_RADIUS * TRAIL_RADIUS;
+
+  for (let i = 0; i < count; i += 1) {
+    const worldPos = worldPositions[i];
+    if (!worldPos) { continue; }
+
+    // Check if trail head is near this star and mark it as brightened
+    if (trailActive) {
+      const dx = worldPos.x - trailHeadX;
+      const dy = worldPos.y - trailHeadY;
+      if (dx * dx + dy * dy <= radiusSq) {
+        trailBrightness[i] = 1;
+        trailPassTime[i] = 0;
+      }
+    }
+
+    // Fade brightness back to 0 after the trail has passed
+    if (trailPassTime[i] >= 0) {
+      trailPassTime[i] += delta;
+      const fade = 1 - Math.min(trailPassTime[i] / TRAIL_FADE_DURATION, 1);
+      trailBrightness[i] = fade;
+
+      const base = baseColors[i];
+      if (!base) { continue; }
+
+      // Lerp from base color toward bright white based on current brightness
+      const brightness = trailBrightness[i];
+      trailColorHelper.setRGB(
+        base.r + (1 - base.r) * brightness,
+        base.g + (1 - base.g) * brightness,
+        base.b + (1 - base.b) * brightness,
+      );
+      mesh.setColorAt(i, trailColorHelper);
+      needsUpdate = true;
+
+      // Clean up fully faded stars
+      if (trailPassTime[i] >= TRAIL_FADE_DURATION) {
+        trailPassTime[i] = -1;
+        trailBrightness[i] = 0;
+        // Restore exact base color
+        trailColorHelper.setRGB(base.r, base.g, base.b);
+        mesh.setColorAt(i, trailColorHelper);
+      }
+    }
+  }
+
+  if (needsUpdate) {
+    mesh.instanceColor.needsUpdate = true;
+  }
+});
 
 // Reusable vector for NDC projection
 const _ndcVec = new THREE.Vector3();
