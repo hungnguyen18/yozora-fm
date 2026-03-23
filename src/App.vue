@@ -8,6 +8,7 @@ import EraIndicator from '@/components/navigation/EraIndicator.vue';
 import EraSummary from '@/components/navigation/EraSummary.vue';
 import GenreLegend from '@/components/navigation/GenreLegend.vue';
 import Minimap from '@/components/navigation/Minimap.vue';
+import RandomPlayButton from '@/components/navigation/RandomPlayButton.vue';
 import SearchBar from '@/components/navigation/SearchBar.vue';
 import AuthButton from '@/components/ui/AuthButton.vue';
 import UserMenu from '@/components/ui/UserMenu.vue';
@@ -70,6 +71,7 @@ onMounted(async () => {
     <EraSummary />
     <Minimap />
     <GenreLegend />
+    <RandomPlayButton />
     <AuthButton v-if="!authStore.isAuthenticated" />
     <UserMenu v-else />
 

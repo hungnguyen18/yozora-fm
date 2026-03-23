@@ -106,6 +106,38 @@ export const usePlayerStore = defineStore("player", () => {
     galaxyStore.flyToStar(nextSong.id);
   }
 
+  // Pick and play a random song, optionally filtered by decade (e.g. 1980, 1990).
+  // Only considers songs that have an animethemes_slug so playback is possible.
+  function playRandom(decade?: number) {
+    const songsStore = useSongsStore();
+    const galaxyStore = useGalaxyStore();
+
+    const listCandidate: ISong[] = [];
+    for (let i = 0; i < songsStore.listSong.length; i += 1) {
+      const s = songsStore.listSong[i];
+      if (!s.animethemes_slug) {
+        continue;
+      }
+      if (decade !== undefined) {
+        const songDecade = Math.floor((s.year ?? 1980) / 10) * 10;
+        if (songDecade !== decade) {
+          continue;
+        }
+      }
+      listCandidate.push(s);
+    }
+
+    if (listCandidate.length === 0) {
+      return;
+    }
+
+    const picked =
+      listCandidate[Math.floor(Math.random() * listCandidate.length)];
+    play(picked);
+    galaxyStore.selectedSongId = picked.id;
+    galaxyStore.flyToStar(picked.id);
+  }
+
   function setVolume(v: number) {
     volume.value = Math.min(1, Math.max(0, v));
   }
@@ -134,6 +166,7 @@ export const usePlayerStore = defineStore("player", () => {
     resume,
     stop,
     next,
+    playRandom,
     setVolume,
     togglePip,
     setProgress,
