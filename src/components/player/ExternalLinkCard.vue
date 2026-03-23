@@ -155,7 +155,7 @@ const hasAnyLink = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(24px) brightness(0.3) saturate(1.3);
+  filter: blur(6px) brightness(0.45) saturate(1.3);
   transform: scale(1.15);
 }
 
