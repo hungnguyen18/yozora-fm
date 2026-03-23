@@ -118,8 +118,8 @@ onMounted(async () => {
     <DetailPanel />
     <PipPlayer />
 
-    <!-- Overlay UI — fades on idle, toggle with H key -->
-    <div class="overlay-ui" :class="{ 'overlay-ui--hidden': !isUIVisible }">
+    <!-- Overlay UI — hidden during loading, fades on idle, toggle with H key -->
+    <div class="overlay-ui" :class="{ 'overlay-ui--hidden': !isUIVisible || isLoading }">
       <SearchBar />
       <Minimap />
       <GenreLegend />

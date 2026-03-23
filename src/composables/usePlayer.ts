@@ -107,9 +107,29 @@ export const usePlayer = () => {
     // Attach progress tracking once
     if (!progressTrackingInstalled) {
       progressTrackingInstalled = true;
+
+      // Unified end handler — debounce to prevent loop/double-trigger.
+      // The 'ended' event AND the background-tab interval can both fire,
+      // and crossfade timing can cause the old video to re-trigger.
+      let lastEndTime = 0;
+
+      const handleVideoEnd = (): void => {
+        const now = Date.now();
+        if (now - lastEndTime < 3000) {
+          return;
+        }
+        lastEndTime = now;
+
+        if (playerStore.autoPlay) {
+          playerStore.next();
+        } else {
+          playerStore.isPlaying = false;
+          playerStore.progress = 0;
+        }
+      };
+
       const trackProgress = (video: HTMLVideoElement): void => {
         video.addEventListener("timeupdate", () => {
-          // Only track the active video
           const active =
             activeVideo.value === "A" ? videoA.value : videoB.value;
           if (video === active && video.duration) {
@@ -119,35 +139,23 @@ export const usePlayer = () => {
         video.addEventListener("ended", () => {
           const active =
             activeVideo.value === "A" ? videoA.value : videoB.value;
-          if (video !== active) {
-            return;
-          }
-          if (playerStore.autoPlay) {
-            playerStore.next();
-          } else {
-            playerStore.isPlaying = false;
-            playerStore.progress = 0;
+          if (video === active) {
+            handleVideoEnd();
           }
         });
       };
       trackProgress(a);
       trackProgress(b);
 
-      // Background-tab safety: browsers may not fire 'ended' when tab is
-      // hidden. Poll every 1s (minimum interval in background tabs) to
-      // catch videos that have reached their end.
+      // Background-tab safety: poll every 1s to catch ended videos
+      // when the browser doesn't fire 'ended' in hidden tabs.
       setInterval(() => {
         const active = activeVideo.value === "A" ? videoA.value : videoB.value;
         if (!active || !active.duration || !playerStore.isPlaying) {
           return;
         }
         if (active.ended || active.currentTime >= active.duration - 0.3) {
-          if (playerStore.autoPlay) {
-            playerStore.next();
-          } else {
-            playerStore.isPlaying = false;
-            playerStore.progress = 0;
-          }
+          handleVideoEnd();
         }
       }, 1000);
     }

@@ -4,6 +4,7 @@ import { useDraggable } from '@vueuse/core';
 import { Play, Pause, SkipForward, Volume2, Maximize2 } from 'lucide-vue-next';
 import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
+import { useSongsStore } from '@/stores/songs';
 import { usePlayer } from '@/composables/usePlayer';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
@@ -12,9 +13,10 @@ const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
 const { videoA, videoB, activeVideo, setVolume } = usePlayer();
 
+const songsStore = useSongsStore();
 const song = computed(() => playerStore.currentSong);
 const isVisible = computed(
-  () => playerStore.isPip && song.value !== null,
+  () => playerStore.isPip && song.value !== null && !songsStore.isLoading,
 );
 
 // Song transition key for crossfade animations
