@@ -24,7 +24,7 @@ const { enableHover, particleCount } = useLOD();
 const starSpatialIndex = useStarSpatialIndex();
 
 const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 20;
+const MAX_ZOOM = 50;
 
 // Camera state shared with CameraController via props
 const INITIAL_ZOOM = 3;

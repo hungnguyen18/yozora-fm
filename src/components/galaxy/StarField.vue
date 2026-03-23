@@ -32,77 +32,21 @@ const listBaseScale = ref<number[]>([]);
 // Per-instance 3D world position cached for label projection
 const listStarWorldPosition = shallowRef<THREE.Vector3[]>([]);
 
-// Build a high-res glow texture with sharp core, halo, and diffraction spikes
-const createGlowTexture = (): THREE.Texture => {
-  const SIZE = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = SIZE;
-  canvas.height = SIZE;
-  const ctx = canvas.getContext('2d')!;
-  const cx = SIZE / 2;
+// ═══════════════════════════════════════════════════════════════════
+// Procedural star shader — each star has a unique shape generated
+// from its world position (used as seed). Variations include:
+//   - Spike count: 4, 5, 6, or 8 points
+//   - Spike length: short, medium, long
+//   - Core size: small or large
+//   - Rotation angle: unique per star
+//   - Secondary halo intensity
+// No texture needed — everything is computed in the fragment shader.
+// ═══════════════════════════════════════════════════════════════════
 
-  // Layer 1: Outer glow (large, faint)
-  const outerGlow = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
-  outerGlow.addColorStop(0, 'rgba(255,255,255,0.25)');
-  outerGlow.addColorStop(0.15, 'rgba(255,255,255,0.12)');
-  outerGlow.addColorStop(0.4, 'rgba(255,255,255,0.04)');
-  outerGlow.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = outerGlow;
-  ctx.fillRect(0, 0, SIZE, SIZE);
-
-  // Layer 2: Inner halo (medium, brighter)
-  const innerHalo = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx * 0.35);
-  innerHalo.addColorStop(0, 'rgba(255,255,255,0.9)');
-  innerHalo.addColorStop(0.4, 'rgba(255,255,255,0.5)');
-  innerHalo.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = innerHalo;
-  ctx.fillRect(0, 0, SIZE, SIZE);
-
-  // Layer 3: Sharp bright core
-  const core = ctx.createRadialGradient(cx, cx, 0, cx, cx, 4);
-  core.addColorStop(0, 'rgba(255,255,255,1)');
-  core.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = core;
-  ctx.fillRect(0, 0, SIZE, SIZE);
-
-  // Layer 4: Diffraction spikes (4 thin rays)
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  for (let angle = 0; angle < 4; angle += 1) {
-    const rad = (angle * Math.PI) / 4 + Math.PI / 8; // 22.5°, 67.5°, 112.5°, 157.5°
-    const spikeLen = cx * 0.85;
-    const spikeGrad = ctx.createLinearGradient(
-      cx - Math.cos(rad) * spikeLen,
-      cx - Math.sin(rad) * spikeLen,
-      cx + Math.cos(rad) * spikeLen,
-      cx + Math.sin(rad) * spikeLen,
-    );
-    spikeGrad.addColorStop(0, 'rgba(255,255,255,0)');
-    spikeGrad.addColorStop(0.4, 'rgba(255,255,255,0.15)');
-    spikeGrad.addColorStop(0.5, 'rgba(255,255,255,0.2)');
-    spikeGrad.addColorStop(0.6, 'rgba(255,255,255,0.15)');
-    spikeGrad.addColorStop(1, 'rgba(255,255,255,0)');
-
-    ctx.beginPath();
-    ctx.moveTo(cx - Math.cos(rad) * spikeLen, cx - Math.sin(rad) * spikeLen);
-    ctx.lineTo(cx + Math.cos(rad) * spikeLen, cx + Math.sin(rad) * spikeLen);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = spikeGrad;
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  const texture = new THREE.CanvasTexture(canvas);
-  return texture;
-};
-
-// Custom shader material with per-instance twinkle animation.
-// Three.js ShaderMaterial auto-injects: position, uv, normal, modelViewMatrix,
-// projectionMatrix, instanceMatrix, instanceColor — do NOT re-declare them.
-const TWINKLE_VERTEX = /* glsl */ `
+const STAR_VERTEX = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vColor;
-  varying float vTwinklePhase;
+  varying float vSeed;
 
   void main() {
     vUv = uv;
@@ -112,45 +56,91 @@ const TWINKLE_VERTEX = /* glsl */ `
       vColor = vec3(1.0);
     #endif
 
-    // Use instance matrix position as twinkle phase seed
+    // Derive a unique seed per instance from world position
     vec4 worldPos = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-    vTwinklePhase = fract(worldPos.x * 0.137 + worldPos.y * 0.293) * 6.2831853;
+    vSeed = fract(worldPos.x * 0.137 + worldPos.y * 0.293 + worldPos.x * worldPos.y * 0.0017);
 
     vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
 
-const TWINKLE_FRAGMENT = /* glsl */ `
-  uniform sampler2D map;
+const STAR_FRAGMENT = /* glsl */ `
   uniform float uTime;
   varying vec2 vUv;
   varying vec3 vColor;
-  varying float vTwinklePhase;
+  varying float vSeed;
+
+  // Hash function for deterministic randomness from seed
+  float hash(float n) {
+    return fract(sin(n) * 43758.5453123);
+  }
 
   void main() {
-    vec4 texColor = texture2D(map, vUv);
+    // Center UV to [-1, 1]
+    vec2 uv = (vUv - 0.5) * 2.0;
+    float dist = length(uv);
 
-    // Per-star twinkle: combine two sine waves at different frequencies
-    float twinkle = 0.75 + 0.25 * sin(uTime * 1.2 + vTwinklePhase)
-                        * sin(uTime * 0.7 + vTwinklePhase * 2.3);
+    // Discard pixels outside the circle
+    if (dist > 1.0) discard;
 
-    // Brighter core (whiter center, colored edges)
-    float coreMask = texColor.r;
-    vec3 color = mix(vColor, vec3(1.0), coreMask * 0.6);
+    // ── Per-star shape parameters derived from seed ──
+    float s = vSeed;
+    float spikeCountF = 4.0 + floor(hash(s * 17.3) * 5.0);  // 4,5,6,7,8
+    float spikeLength = 0.3 + hash(s * 31.7) * 0.45;         // 0.3–0.75
+    float spikeSharpness = 2.0 + hash(s * 53.1) * 6.0;       // 2–8
+    float coreSize = 0.08 + hash(s * 71.9) * 0.07;            // 0.08–0.15
+    float rotation = hash(s * 97.3) * 6.2831853;              // 0–2π
+    float haloStrength = 0.15 + hash(s * 113.7) * 0.2;        // 0.15–0.35
 
-    gl_FragColor = vec4(color * texColor.rgb * twinkle, texColor.a * 0.7);
+    // ── Rotated polar coordinates ──
+    float angle = atan(uv.y, uv.x) + rotation;
+
+    // ── Spike shape: modulate radius by cos(angle * spikeCount) ──
+    float spikes = pow(abs(cos(angle * spikeCountF / 2.0)), spikeSharpness);
+    float spikeRadius = mix(1.0, 1.0 + spikeLength, spikes);
+
+    // ── Core: bright sharp center ──
+    float core = exp(-dist / coreSize);
+
+    // ── Inner halo: soft glow around core ──
+    float halo = exp(-dist * 3.5) * haloStrength;
+
+    // ── Spike rays: thin bright lines extending outward ──
+    float spikeRay = spikes * exp(-dist * 2.0) * spikeLength;
+
+    // ── Outer glow: very soft, large radius ──
+    float outerGlow = exp(-dist * 1.8) * 0.12;
+
+    // ── Combine all layers ──
+    float brightness = core + halo + spikeRay + outerGlow;
+
+    // ── Twinkle: per-star oscillation ──
+    float twinklePhase = vSeed * 6.2831853;
+    float twinkle = 0.78 + 0.22 * sin(uTime * 1.3 + twinklePhase)
+                        * sin(uTime * 0.8 + twinklePhase * 2.1);
+    brightness *= twinkle;
+
+    // ── Color: white core fading to genre color at edges ──
+    float coreMask = smoothstep(0.3, 0.0, dist);
+    vec3 color = mix(vColor, vec3(1.0), coreMask * 0.7);
+
+    // ── Final alpha: smooth falloff ──
+    float alpha = clamp(brightness, 0.0, 1.0);
+    // Fade to transparent at edges
+    alpha *= smoothstep(1.0, 0.7, dist);
+
+    gl_FragColor = vec4(color * brightness, alpha * 0.8);
   }
 `;
 
-const createStarMaterial = (glowTexture: THREE.Texture): THREE.ShaderMaterial => {
+const createStarMaterial = (): THREE.ShaderMaterial => {
   return new THREE.ShaderMaterial({
     uniforms: {
-      map: { value: glowTexture },
       uTime: { value: 0.0 },
     },
-    vertexShader: TWINKLE_VERTEX,
-    fragmentShader: TWINKLE_FRAGMENT,
+    vertexShader: STAR_VERTEX,
+    fragmentShader: STAR_FRAGMENT,
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -167,7 +157,7 @@ const buildMesh = () => {
   const { matrices, colors, sizes, count } = computeBuffers(listSong);
 
   const geometry = new THREE.PlaneGeometry(2, 2);
-  const material = createStarMaterial(createGlowTexture());
+  const material = createStarMaterial();
 
   const mesh = new THREE.InstancedMesh(geometry, material, count);
   mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
@@ -407,8 +397,8 @@ const { onBeforeRender } = useLoop();
 
 // Cap star visual size at high zoom to prevent white-blob effect.
 // At zoom > ZOOM_CAP_START, scales are reduced so stars stay readable.
-const ZOOM_CAP_START = 6;
-const MAX_SCREEN_STAR_SIZE = 5.0; // maximum world-space scale allowed
+const ZOOM_CAP_START = 10;
+const MAX_SCREEN_STAR_SIZE = 8.0; // maximum world-space scale allowed
 const ZOOM_CAP_THRESHOLD = 0.5; // only recalculate when zoom changes by this much
 const scaleCapHelper = new THREE.Matrix4();
 const scaleCapPos = new THREE.Vector3();
@@ -421,9 +411,10 @@ const applyScaleCap = (mesh: THREE.InstancedMesh, zoom: number) => {
   if (baseScales.length === 0) { return; }
 
   const count = mesh.count;
-  // Scale factor: above ZOOM_CAP_START, shrink proportionally
+  // Scale factor: above ZOOM_CAP_START, shrink with square root curve
+  // (much gentler than linear — stars stay visible at high zoom)
   const capFactor = zoom > ZOOM_CAP_START
-    ? ZOOM_CAP_START / zoom
+    ? Math.sqrt(ZOOM_CAP_START / zoom)
     : 1;
 
   for (let i = 0; i < count; i += 1) {
