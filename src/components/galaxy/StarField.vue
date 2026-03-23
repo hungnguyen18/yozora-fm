@@ -11,6 +11,7 @@ import { useGalaxyStore } from '@/stores/galaxy';
 import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
 import { useLOD } from '@/composables/useLOD';
 import { useStarSpatialIndex } from '@/composables/useStarSpatialIndex';
+import { useDiscovery } from '@/composables/useDiscovery';
 
 const songsStore = useSongsStore();
 const playerStore = usePlayerStore();
@@ -19,6 +20,7 @@ const { computeBuffers } = useGalaxyLayout();
 const { showLabels, labelVoteThreshold, labelMaxCount } = useLOD();
 const { scene } = useTresContext();
 const trailSpatialIndex = useStarSpatialIndex();
+const { lastDiscoveryId } = useDiscovery();
 
 // Set of star indices currently affected by the trail (brightened or fading).
 // Only these are iterated each frame for the fade pass, instead of all 9111 stars.
@@ -436,6 +438,27 @@ watch(
   },
 );
 
+// Discovery burst — golden flash + scale pulse when a song is played for the first time.
+// The burst lasts ~1.5s: scale up 3x then ease back, color flashes gold then restores.
+const DISCOVERY_BURST_DURATION = 1.5; // seconds
+const DISCOVERY_BURST_SCALE = 3.0;
+const discoveryGoldColor = new THREE.Color(1.0, 0.84, 0.0); // #FFD700 gold
+let discoveryBurstInstanceId: number | null = null;
+let discoveryBurstElapsed = -1;
+
+watch(lastDiscoveryId, (songId) => {
+  if (songId === null) { return; }
+  const mesh = instancedMesh.value;
+  if (!mesh) { return; }
+
+  const listSong = songsStore.listSong;
+  const instanceId = listSong.findIndex((s) => s.id === songId);
+  if (instanceId === -1) { return; }
+
+  discoveryBurstInstanceId = instanceId;
+  discoveryBurstElapsed = 0;
+});
+
 // Camera trail effect — brightens stars swept by the camera path during flyToStar.
 // Per-instance fade progress: 0 = fully restored, 1 = fully brightened by trail.
 // Using a plain Float32Array (bypasses Vue reactivity) for per-frame performance.
@@ -520,6 +543,38 @@ onBeforeRender(({ delta }) => {
   const mat = mesh.material as THREE.ShaderMaterial;
   if (mat.uniforms?.uTime) {
     mat.uniforms.uTime.value = elapsedTime;
+  }
+
+  // Discovery burst animation — golden flash + scale pulse on first-time plays
+  if (discoveryBurstInstanceId !== null && discoveryBurstElapsed >= 0) {
+    discoveryBurstElapsed += delta;
+    const t = Math.min(discoveryBurstElapsed / DISCOVERY_BURST_DURATION, 1);
+
+    // Ease-out curve: fast start, slow finish
+    const ease = 1 - (1 - t) * (1 - t);
+
+    // Scale: burst up then ease back to base
+    const baseScale = listBaseScale.value[discoveryBurstInstanceId] ?? 1;
+    const burstScale = baseScale * (1 + (DISCOVERY_BURST_SCALE - 1) * (1 - ease));
+    setInstanceScale(mesh, discoveryBurstInstanceId, burstScale);
+
+    // Color: gold lerping back to white (active star color)
+    const goldLerp = 1 - ease;
+    setInstanceColor(
+      mesh,
+      discoveryBurstInstanceId,
+      1.0,
+      1.0 - (1.0 - discoveryGoldColor.g) * goldLerp,
+      1.0 - (1.0 - discoveryGoldColor.b) * goldLerp,
+    );
+
+    if (t >= 1) {
+      // Burst complete — restore to active star white + active scale
+      setInstanceColor(mesh, discoveryBurstInstanceId, activeColor.r, activeColor.g, activeColor.b);
+      setInstanceScale(mesh, discoveryBurstInstanceId, baseScale * ACTIVE_SCALE_MULTIPLIER);
+      discoveryBurstInstanceId = null;
+      discoveryBurstElapsed = -1;
+    }
   }
 
   // Apply star scale cap only when zoom crosses a significant threshold
