@@ -68,10 +68,13 @@ export const usePlayer = () => {
       const progress = Math.min(elapsed / FADE_DURATION, 1);
 
       if (outgoing) {
-        outgoing.volume = (1 - progress) * targetVolume;
+        outgoing.volume = Math.min(
+          Math.max((1 - progress) * targetVolume, 0),
+          1,
+        );
       }
       if (incoming) {
-        incoming.volume = progress * targetVolume;
+        incoming.volume = Math.min(Math.max(progress * targetVolume, 0), 1);
       }
 
       if (progress < 1) {

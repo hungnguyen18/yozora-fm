@@ -55,11 +55,11 @@ const buildMesh = () => {
 
   const { matrices, colors, sizes, count } = computeBuffers(listSong);
 
-  const geometry = new THREE.PlaneGeometry(1, 1);
+  const geometry = new THREE.PlaneGeometry(2, 2);
   const material = new THREE.MeshBasicMaterial({
     map: createGlowTexture(),
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.65,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
@@ -87,6 +87,10 @@ const buildMesh = () => {
 
   mesh.instanceMatrix.needsUpdate = true;
   mesh.instanceColor.needsUpdate = true;
+
+  // Compute bounding volumes so raycasting works on InstancedMesh
+  mesh.computeBoundingBox();
+  mesh.computeBoundingSphere();
 
   // Cache original per-instance colors for active-star restoration
   const baseColors: { r: number; g: number; b: number }[] = [];

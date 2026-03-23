@@ -52,8 +52,8 @@ const computeSongPosition = (songId: number, year: number, genre: TGenre | undef
   const armOffsetDeg = armIndex * 90;
 
   const rng = seededRandom(songId);
-  const angleJitterDeg = (rng() * 2 - 1) * 5;
-  const radiusJitterPct = (rng() * 2 - 1) * 0.02;
+  const angleJitterDeg = (rng() * 2 - 1) * 15;
+  const radiusJitterPct = (rng() * 2 - 1) * 0.08;
 
   const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
   const angleRad = (angleDeg * Math.PI) / 180;

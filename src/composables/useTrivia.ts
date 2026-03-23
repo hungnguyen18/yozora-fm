@@ -20,7 +20,7 @@ export const useTrivia = (songId: Ref<number>) => {
 
     const { data, error: fetchError } = await supabase
       .from("trivia")
-      .select("*, user:user_id(id, nickname, avatarUrl, provider)")
+      .select("*")
       .eq("song_id", id)
       .eq("status", "approved")
       .order("upvote_count", { ascending: false })

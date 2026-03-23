@@ -35,8 +35,8 @@ const hexToColor = (hex: string): THREE.Color => {
 
 // Logarithmic size mapping: vote_count → [1.0, 4.0]
 const computeStarSize = (voteCount: number): number => {
-  const MIN_SIZE = 3.0;
-  const MAX_SIZE = 8.0;
+  const MIN_SIZE = 0.5;
+  const MAX_SIZE = 1.8;
   // log2(1) = 0, treat vote_count of 0 as 1 to avoid log(0)
   const clamped = Math.max(1, voteCount);
   // Scale: log2 range from 0 to ~10 maps nicely to [1, 4]
@@ -79,8 +79,8 @@ export const useGalaxyLayout = () => {
       const armOffsetDeg = armIndex * 90;
 
       const rng = seededRandom(song.id);
-      const angleJitterDeg = (rng() * 2 - 1) * 5;
-      const radiusJitterPct = (rng() * 2 - 1) * 0.02;
+      const angleJitterDeg = (rng() * 2 - 1) * 15;
+      const radiusJitterPct = (rng() * 2 - 1) * 0.08;
 
       const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
       const angleRad = (angleDeg * Math.PI) / 180;
