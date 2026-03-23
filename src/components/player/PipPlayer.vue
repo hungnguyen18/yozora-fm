@@ -128,21 +128,6 @@ const handleProgressClick = (event: MouseEvent): void => {
   }
 };
 
-// Format progress as mm:ss / mm:ss
-const timeDisplay = computed(() => {
-  const mainVideo = getMainVideoEl();
-  if (!mainVideo || !mainVideo.duration) {
-    return '';
-  }
-  const current = mainVideo.duration * playerStore.progress;
-  const total = mainVideo.duration;
-  const formatTime = (seconds: number): string => {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-  return `${formatTime(current)} / ${formatTime(total)}`;
-});
 </script>
 
 <template>

@@ -15,7 +15,6 @@ import DiscoveryCounter from '@/components/ui/DiscoveryCounter.vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useSongsStore } from '@/stores/songs';
-import { useGalaxyStore } from '@/stores/galaxy';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
 import { usePlayer } from '@/composables/usePlayer';
 import { useRouting } from '@/composables/useRouting';
@@ -24,7 +23,6 @@ import { useDiscovery } from '@/composables/useDiscovery';
 
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
-const galaxyStore = useGalaxyStore();
 
 useKeyboardNav();
 usePlayer();

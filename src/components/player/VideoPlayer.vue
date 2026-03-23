@@ -21,7 +21,6 @@ const {
   videoB,
   activeVideo,
   isLoading,
-  isCrossfading,
   pause,
   resume,
   setVolume,
