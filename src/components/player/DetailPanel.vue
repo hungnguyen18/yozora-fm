@@ -2,9 +2,11 @@
 import { ref, computed, watch } from 'vue';
 import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
+import { useSongsStore } from '@/stores/songs';
 import { GENRE_COLOR_MAP } from '@/types';
-import type { TGenre } from '@/types';
-import { X, Orbit, ChevronRight, Share2, Check, SkipForward } from 'lucide-vue-next';
+import type { TGenre, ISong } from '@/types';
+import { X, Orbit, ChevronRight, Share2, Check, SkipForward, Sparkles } from 'lucide-vue-next';
+import { useRelatedSongs } from '@/composables/useRelatedSongs';
 import VideoPlayer from '@/components/player/VideoPlayer.vue';
 import YouTubeFallback from '@/components/player/YouTubeFallback.vue';
 import ExternalLinkCard from '@/components/player/ExternalLinkCard.vue';
@@ -14,8 +16,24 @@ import CommentList from '@/components/community/CommentList.vue';
 
 const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
+const songsStore = useSongsStore();
 
 const song = computed(() => playerStore.currentSong);
+
+// Related songs scoring
+const { listRelated } = useRelatedSongs(
+  () => playerStore.currentSong,
+  () => songsStore.listSong,
+);
+
+const songRelatedSelect = (relatedSong: ISong) => {
+  galaxyStore.flyToStar(relatedSong.id);
+  playerStore.play(relatedSong);
+};
+
+const songRelatedGenreColor = (genre?: string) => {
+  return GENRE_COLOR_MAP[(genre as TGenre) ?? 'other'] ?? GENRE_COLOR_MAP.other;
+};
 const isOpen = computed(() => galaxyStore.selectedSongId !== null && song.value !== null);
 
 // Track song ID for transition keying
@@ -309,6 +327,36 @@ const shareSong = async () => {
           <div v-if="song" class="community-section">
             <TriviaSection :song-id="song.id" />
             <CommentList :song-id="song.id" />
+          </div>
+
+          <!-- Related Stars -->
+          <div v-if="listRelated.length > 0" class="related-section">
+            <div class="section-divider" :style="{ borderColor: `${genreColor}15` }" />
+            <div class="related-header">
+              <Sparkles :size="14" />
+              <span>Related Stars</span>
+            </div>
+            <div class="related-list">
+              <button
+                v-for="related in listRelated"
+                :key="related.id"
+                class="related-item"
+                @click="songRelatedSelect(related)"
+              >
+                <span
+                  class="related-item__dot"
+                  :style="{ backgroundColor: songRelatedGenreColor(related.genre) }"
+                />
+                <div class="related-item__info">
+                  <span class="related-item__title">{{ related.title }}</span>
+                  <span class="related-item__meta">
+                    {{ related.artist?.name ?? 'Unknown' }}
+                    <template v-if="related.year"> &middot; {{ related.year }}</template>
+                  </span>
+                </div>
+                <ChevronRight :size="12" class="related-item__arrow" />
+              </button>
+            </div>
           </div>
         </div>
       </Transition>
@@ -727,6 +775,95 @@ const shareSong = async () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* ═══════════════════════════════════════════════
+   RELATED STARS
+   ═══════════════════════════════════════════════ */
+
+.related-section {
+  margin-top: 4px;
+}
+
+.related-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(155, 155, 180, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+.related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.related-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.related-item:hover {
+  background: rgba(155, 155, 180, 0.06);
+  border-color: rgba(155, 155, 180, 0.1);
+}
+
+.related-item__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.related-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.related-item__title {
+  font-size: 0.8125rem;
+  color: rgba(232, 232, 240, 0.9);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.related-item__meta {
+  font-size: 0.6875rem;
+  color: rgba(155, 155, 180, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.related-item__arrow {
+  flex-shrink: 0;
+  color: rgba(155, 155, 180, 0.25);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.related-item:hover .related-item__arrow {
+  transform: translateX(2px);
+  color: rgba(155, 155, 180, 0.5);
 }
 
 /* ═══════════════════════════════════════════════
