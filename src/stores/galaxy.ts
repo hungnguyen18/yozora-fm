@@ -179,8 +179,15 @@ export const useGalaxyStore = defineStore("galaxy", {
       const startPanX = this.panX;
       const startPanY = this.panY;
       const startZoom = this.zoomLevel;
-      // Zoom in to at least 5 for focus (don't zoom out if already closer)
       const TARGET_ZOOM = Math.max(5, startZoom);
+
+      // Offset the pan target so the star centers in the visible area
+      // (viewport minus the 520px detail panel on the right).
+      // In orthographic projection: world_offset = screen_pixels / zoom.
+      const PANEL_WIDTH_PX = 520;
+      const panOffsetX = PANEL_WIDTH_PX / 2 / TARGET_ZOOM;
+      const targetX = target.x - panOffsetX;
+      const targetY = target.y;
 
       const animateTrail = () => {
         const elapsed = performance.now() - startTime;
@@ -190,8 +197,8 @@ export const useGalaxyStore = defineStore("galaxy", {
         this.trailProgress = easedProgress;
 
         // Smoothly interpolate camera pan and zoom
-        this.panX = startPanX + (target.x - startPanX) * easedProgress;
-        this.panY = startPanY + (target.y - startPanY) * easedProgress;
+        this.panX = startPanX + (targetX - startPanX) * easedProgress;
+        this.panY = startPanY + (targetY - startPanY) * easedProgress;
 
         if (startZoom !== TARGET_ZOOM) {
           const newZoom = startZoom + (TARGET_ZOOM - startZoom) * easedProgress;
@@ -201,8 +208,8 @@ export const useGalaxyStore = defineStore("galaxy", {
         if (linearProgress < 1) {
           requestAnimationFrame(animateTrail);
         } else {
-          this.panX = target.x;
-          this.panY = target.y;
+          this.panX = targetX;
+          this.panY = targetY;
           this.setZoomLevel(TARGET_ZOOM);
           setTimeout(() => {
             this.isTrailActive = false;
