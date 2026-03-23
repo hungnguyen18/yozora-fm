@@ -99,8 +99,10 @@ const updateVisibility = (hoveredStarId: number | null): void => {
     return;
   }
 
-  if (hoveredStarId === null) {
-    // No hover — hide all constellations
+  const focusedId = galaxyStore.focusedArtistId;
+
+  if (hoveredStarId === null && focusedId === null) {
+    // No hover and no focus — hide all constellations
     for (const lines of artistLineMap.values()) {
       (lines.material as THREE.LineBasicMaterial).opacity = 0.0;
     }
@@ -108,15 +110,24 @@ const updateVisibility = (hoveredStarId: number | null): void => {
   }
 
   // hoveredStarId is song.id — find the matching song by id
-  const listSong = songsStore.listSong;
-  const hoveredSong = listSong.find((s) => s.id === hoveredStarId) ?? null;
-  if (!hoveredSong) { return; }
-
-  const hoveredArtistId = hoveredSong.artist_id;
+  let hoveredArtistId: number | null = null;
+  if (hoveredStarId !== null) {
+    const listSong = songsStore.listSong;
+    const hoveredSong = listSong.find((s) => s.id === hoveredStarId) ?? null;
+    if (hoveredSong) {
+      hoveredArtistId = hoveredSong.artist_id;
+    }
+  }
 
   for (const [artistId, lines] of artistLineMap.entries()) {
     const mat = lines.material as THREE.LineBasicMaterial;
-    mat.opacity = artistId === hoveredArtistId ? 0.35 : 0.0;
+    if (artistId === hoveredArtistId) {
+      mat.opacity = 0.35;
+    } else if (artistId === focusedId) {
+      mat.opacity = 0.5;
+    } else {
+      mat.opacity = 0.0;
+    }
   }
 };
 
@@ -142,6 +153,14 @@ watch(
   () => galaxyStore.hoveredStarId,
   (nextId) => {
     updateVisibility(nextId);
+  },
+);
+
+// React to focused artist changes (constellation focus mode)
+watch(
+  () => galaxyStore.focusedArtistId,
+  () => {
+    updateVisibility(galaxyStore.hoveredStarId);
   },
 );
 

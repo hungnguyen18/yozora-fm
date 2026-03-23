@@ -93,7 +93,14 @@ const onGenreClick = (genre: string) => {
 
 const onViewConstellation = () => {
   if (song.value?.artist_id) {
-    // Will be implemented in Phase 5
+    galaxyStore.focusArtist(song.value.artist_id);
+    // Close detail panel so the constellation is fully visible
+    if (playerStore.isPlaying) {
+      playerStore.isPip = true;
+    } else {
+      playerStore.stop();
+    }
+    galaxyStore.selectedSongId = null;
   }
 };
 

@@ -89,9 +89,12 @@ export const useKeyboardNav = () => {
         break;
       }
 
-      // Escape to close detail panel
+      // Escape to exit constellation focus or close detail panel
       case "Escape": {
-        if (playerStore.currentSong !== null) {
+        if (galaxyStore.focusedArtistId !== null) {
+          e.preventDefault();
+          galaxyStore.focusArtist(null);
+        } else if (playerStore.currentSong !== null) {
           e.preventDefault();
           if (playerStore.isPlaying) {
             playerStore.isPip = true;

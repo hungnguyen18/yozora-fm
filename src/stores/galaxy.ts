@@ -32,6 +32,8 @@ export const useGalaxyStore = defineStore("galaxy", {
     lodTier: "far" as TLodTier,
     // Maps artistId → list of songIds for artists with 2+ songs
     constellationData: new Map<number, number[]>(),
+    // Constellation focus mode — keeps lines visible and dims other stars
+    focusedArtistId: null as number | null,
     // Camera trail effect state — set when flyToStar is called during auto-play
     trailStart: null as { x: number; y: number } | null,
     trailEnd: null as { x: number; y: number } | null,
@@ -66,6 +68,9 @@ export const useGalaxyStore = defineStore("galaxy", {
     },
 
     flyToStar(songId: number) {
+      // Clear constellation focus when navigating to a specific star
+      this.focusedArtistId = null;
+
       const target = this.listStarPosition.find((sp) => sp.songId === songId);
       if (!target) {
         this.selectedSongId = songId;
@@ -169,6 +174,58 @@ export const useGalaxyStore = defineStore("galaxy", {
     setPan(x: number, y: number) {
       this.panX = x;
       this.panY = y;
+    },
+
+    focusArtist(artistId: number | null) {
+      this.focusedArtistId = artistId;
+      if (artistId === null) {
+        return;
+      }
+
+      const listSongId = this.constellationData.get(artistId);
+      if (!listSongId || listSongId.length < 2) {
+        return;
+      }
+
+      // Compute bounding box of all artist's star positions
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+
+      for (let i = 0; i < this.listStarPosition.length; i += 1) {
+        const sp = this.listStarPosition[i];
+        if (!listSongId.includes(sp.songId)) {
+          continue;
+        }
+        if (sp.x < minX) {
+          minX = sp.x;
+        }
+        if (sp.x > maxX) {
+          maxX = sp.x;
+        }
+        if (sp.y < minY) {
+          minY = sp.y;
+        }
+        if (sp.y > maxY) {
+          maxY = sp.y;
+        }
+      }
+
+      // Fly camera to center of bounding box with zoom to frame all stars
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const spanX = maxX - minX;
+      const spanY = maxY - minY;
+      const span = Math.max(spanX, spanY, 20);
+
+      // Calculate zoom to fit the span in ~60% of viewport
+      const viewportSize = Math.min(window.innerWidth, window.innerHeight);
+      const targetZoom = (viewportSize * 0.6) / span;
+      const clampedZoom = Math.max(2, Math.min(targetZoom, 15));
+
+      this.setPan(centerX, centerY);
+      this.setZoomLevel(clampedZoom);
     },
 
     setFocusedEra(decade: number | null) {
