@@ -16,6 +16,7 @@ import ConstellationLines from './ConstellationLines.vue';
 import Nebula from './Nebula.vue';
 import ParticleDust from './ParticleDust.vue';
 import RippleEffect from './RippleEffect.vue';
+import SessionTrail from './SessionTrail.vue';
 import DecadeRings from './DecadeRings.vue';
 import StarField from './StarField.vue';
 
@@ -206,6 +207,9 @@ const onTresReady = (ctx: TresContext) => {
         :hovered-instance-id="hoveredInstanceId"
         :camera="activeCamera"
       />
+
+      <!-- Session trail: glowing line connecting played stars in order -->
+      <SessionTrail />
 
       <!-- Ripple rings: expanding concentric rings around the currently playing star -->
       <RippleEffect />

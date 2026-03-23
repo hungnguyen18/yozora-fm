@@ -184,6 +184,7 @@ export const usePlayerStore = defineStore("player", () => {
     progress,
     volume,
     autoPlay,
+    listRecentId,
     play,
     pause,
     resume,
