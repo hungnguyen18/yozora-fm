@@ -984,6 +984,45 @@ git add src/components/ui/LoadingScreen.vue src/App.vue && git commit -S -m "fea
 
 ---
 
+## Phase 6.5: UI/UX Design Review & Testing
+
+> Use frontend-design skill to audit visual quality. Use Playwright MCP to test interactions.
+
+### Task 6.4: UI/UX Design Review with Playwright
+
+- [ ] **Step 1: Start dev server** — `npm run dev`
+
+- [ ] **Step 2: Use Playwright MCP to navigate and capture screenshots**
+- Navigate to localhost → capture full galaxy view
+- Zoom in/out → capture different LOD levels
+- Click a star → capture detail panel open
+- Hover stars → capture tooltip
+- Open search → capture search results
+- Check PiP player → capture floating window
+
+- [ ] **Step 3: Use frontend-design skill to review screenshots**
+- Evaluate visual consistency with brand (Indigo/Gold/Coral palette)
+- Check typography (Space Grotesk headings, Inter body)
+- Review spacing, alignment, contrast
+- Identify any generic/AI-looking UI patterns to replace with distinctive design
+- Review animations and transitions for smoothness
+
+- [ ] **Step 4: Fix identified issues**
+- Improve color usage, shadows, borders
+- Enhance hover states and micro-interactions
+- Polish loading states and transitions
+- Ensure responsive behavior
+
+- [ ] **Step 5: Re-test with Playwright** — verify fixes, capture final screenshots
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/ && git commit -S -m "improve: UI/UX polish based on design review"
+```
+
+---
+
 ## Phase 7: Spotify Integration (Optional Upgrade)
 
 > Add Spotify Web Playback SDK as an optional audio mode.
@@ -1028,12 +1067,13 @@ git add src/composables/useSpotify.ts src/components/player/ src/stores/auth.ts 
 
 > Ship it. (Git + GitHub already initialized in Phase 0)
 
-### Task 8.1: Vercel Deployment
+### Task 8.1: Vercel Deployment (via MCP)
 
-- [ ] **Step 1: Connect Vercel to GitHub repo**
-- [ ] **Step 2: Set environment variables** — VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
-- [ ] **Step 3: Deploy + verify live URL**
-- [ ] **Step 4: Add live URL to GitHub repo description**
+- [ ] **Step 1: Deploy to Vercel** — use `vercel:deploy` skill or Vercel MCP tools
+- [ ] **Step 2: Set environment variables** via `vercel:env` — VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+- [ ] **Step 3: Deploy to production** — `vercel:deploy prod`
+- [ ] **Step 4: Verify live URL**
+- [ ] **Step 5: Add live URL to GitHub repo description**
 
 ---
 
@@ -1116,6 +1156,7 @@ git add -A && git commit -S -m "refactor: replace hardcoded SVGs with lucide-vue
 | **4.5 Cleanup**      | Icon package, VueUse optimization                            | Phase 4     |
 | **5. Constellation** | Artist lines, era summary                                    | Phase 2     |
 | **6. Polish**        | Animations, effects, loading screen                          | Phase 2 + 3 |
+| **6.5 UI/UX Review** | Playwright testing, design review, visual polish             | Phase 6     |
 | **7. Spotify**       | Optional audio mode                                          | Phase 3     |
 | **8. Deploy**        | Vercel, edge function                                        | All         |
 
