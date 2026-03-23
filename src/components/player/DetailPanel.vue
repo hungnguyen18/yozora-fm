@@ -4,7 +4,7 @@ import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
-import { X, Orbit, ChevronRight } from 'lucide-vue-next';
+import { X, Orbit, ChevronRight, Share2, Check } from 'lucide-vue-next';
 import VideoPlayer from '@/components/player/VideoPlayer.vue';
 import YouTubeFallback from '@/components/player/YouTubeFallback.vue';
 import ExternalLinkCard from '@/components/player/ExternalLinkCard.vue';
@@ -94,6 +94,39 @@ const onGenreClick = (genre: string) => {
 const onViewConstellation = () => {
   if (song.value?.artist_id) {
     // Will be implemented in Phase 5
+  }
+};
+
+// Share: copy song URL to clipboard
+const isCopied = ref(false);
+let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
+const shareSong = async () => {
+  if (!song.value) {
+    return;
+  }
+  const url = `${window.location.origin}/song/${song.value.id}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    isCopied.value = true;
+    if (copyTimer) {
+      clearTimeout(copyTimer);
+    }
+    copyTimer = setTimeout(() => {
+      isCopied.value = false;
+    }, 2000);
+  } catch {
+    // Fallback: select+copy
+    const input = document.createElement('input');
+    input.value = url;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    document.body.removeChild(input);
+    isCopied.value = true;
+    copyTimer = setTimeout(() => {
+      isCopied.value = false;
+    }, 2000);
   }
 };
 </script>
@@ -220,6 +253,16 @@ const onViewConstellation = () => {
           <div class="action-bar">
             <div class="action-bar__left">
               <VoteButton v-if="song" :song-id="song.id" />
+              <button
+                class="share-btn"
+                :class="{ 'share-btn--copied': isCopied }"
+                aria-label="Copy song link"
+                @click="shareSong"
+              >
+                <Check v-if="isCopied" :size="14" />
+                <Share2 v-else :size="14" />
+                <span>{{ isCopied ? 'Copied!' : 'Share' }}</span>
+              </button>
             </div>
             <div class="action-bar__right">
               <label class="autoplay-toggle">
@@ -690,5 +733,64 @@ const onViewConstellation = () => {
 
 .detail-panel::-webkit-scrollbar-thumb:hover {
   background: rgba(155, 155, 180, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   SHARE BUTTON
+   ═══════════════════════════════════════════════ */
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(155, 155, 180, 0.15);
+  background: transparent;
+  color: rgba(155, 155, 180, 0.7);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.share-btn:hover {
+  color: #E8E8F0;
+  border-color: rgba(155, 155, 180, 0.3);
+  background: rgba(155, 155, 180, 0.06);
+}
+
+.share-btn--copied {
+  color: #34D399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   MOBILE RESPONSIVE
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .detail-panel {
+    width: 100vw;
+    border-left: none;
+  }
+
+  .song-title {
+    font-size: 1.375rem;
+  }
+
+  .song-content {
+    padding: 0 16px 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .media-section {
+    padding: 8px 10px 0;
+  }
+
+  .action-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
 }
 </style>
