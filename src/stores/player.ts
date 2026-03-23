@@ -1,146 +1,142 @@
+import { ref } from "vue";
 import { defineStore } from "pinia";
+import { useLocalStorage } from "@vueuse/core";
 import type { ISong } from "@/types";
 import { useSongsStore } from "@/stores/songs";
 import { useGalaxyStore } from "@/stores/galaxy";
 
-const STORAGE_KEY_VOLUME = "yozora_player_volume";
-const STORAGE_KEY_AUTO_PLAY = "yozora_player_autoPlay";
+export const usePlayerStore = defineStore("player", () => {
+  const currentSong = ref<ISong | null>(null);
+  const isPlaying = ref(false);
+  const isPip = ref(false);
+  const progress = ref(0); // 0–1 representing playback position
 
-const loadVolume = (): number => {
-  const stored = localStorage.getItem(STORAGE_KEY_VOLUME);
-  if (stored === null) {
-    return 0.8;
+  // Persisted preferences via useLocalStorage
+  const volume = useLocalStorage("yozora_player_volume", 0.8);
+  const autoPlay = useLocalStorage("yozora_player_autoPlay", true);
+
+  function play(song: ISong) {
+    currentSong.value = song;
+    isPlaying.value = true;
+    progress.value = 0;
+    // Actual audio playback is handled by composables in Phase 3.
   }
-  const parsed = parseFloat(stored);
-  return isNaN(parsed) ? 0.8 : Math.min(1, Math.max(0, parsed));
-};
 
-const loadAutoPlay = (): boolean => {
-  const stored = localStorage.getItem(STORAGE_KEY_AUTO_PLAY);
-  if (stored === null) {
-    return true;
+  function pause() {
+    isPlaying.value = false;
   }
-  return stored === "true";
-};
 
-export const usePlayerStore = defineStore("player", {
-  state: () => ({
-    currentSong: null as ISong | null,
-    isPlaying: false,
-    isPip: false,
-    volume: loadVolume(),
-    autoPlay: loadAutoPlay(),
-    progress: 0, // 0–1 representing playback position
-  }),
-  actions: {
-    play(song: ISong) {
-      this.currentSong = song;
-      this.isPlaying = true;
-      this.progress = 0;
-      // Actual audio playback is handled by composables in Phase 3.
-    },
+  function resume() {
+    if (currentSong.value !== null) {
+      isPlaying.value = true;
+    }
+  }
 
-    pause() {
-      this.isPlaying = false;
-    },
+  function stop() {
+    isPlaying.value = false;
+    currentSong.value = null;
+    progress.value = 0;
+  }
 
-    resume() {
-      if (this.currentSong !== null) {
-        this.isPlaying = true;
+  // Advance to the nearest song in the same decade era.
+  // Picks a random candidate from the same era to avoid predictable repetition.
+  function next() {
+    if (!autoPlay.value || !currentSong.value) {
+      isPlaying.value = false;
+      progress.value = 0;
+      return;
+    }
+
+    const songsStore = useSongsStore();
+    const galaxyStore = useGalaxyStore();
+
+    const currentYear = currentSong.value.year ?? 1980;
+    const currentDecade = Math.floor(currentYear / 10) * 10;
+    const currentId = currentSong.value.id;
+
+    // Collect candidates: same decade, different song
+    const listSameEra: ISong[] = [];
+    for (let i = 0; i < songsStore.listSong.length; i += 1) {
+      const s = songsStore.listSong[i];
+      const decade = Math.floor((s.year ?? 1980) / 10) * 10;
+      if (decade === currentDecade && s.id !== currentId) {
+        listSameEra.push(s);
       }
-    },
+    }
 
-    stop() {
-      this.isPlaying = false;
-      this.currentSong = null;
-      this.progress = 0;
-    },
+    if (listSameEra.length === 0) {
+      isPlaying.value = false;
+      progress.value = 0;
+      return;
+    }
 
-    // Advance to the nearest song in the same decade era.
-    // Picks a random candidate from the same era to avoid predictable repetition.
-    next() {
-      if (!this.autoPlay || !this.currentSong) {
-        this.isPlaying = false;
-        this.progress = 0;
-        return;
-      }
+    // Find the nearest star by Euclidean distance in galaxy space
+    const currentPos = galaxyStore.listStarPosition.find(
+      (sp) => sp.songId === currentId,
+    );
+    let nextSong: ISong;
 
-      const songsStore = useSongsStore();
-      const galaxyStore = useGalaxyStore();
-
-      const currentYear = this.currentSong.year ?? 1980;
-      const currentDecade = Math.floor(currentYear / 10) * 10;
-      const currentId = this.currentSong.id;
-
-      // Collect candidates: same decade, different song
-      const listSameEra: ISong[] = [];
-      for (let i = 0; i < songsStore.listSong.length; i += 1) {
-        const s = songsStore.listSong[i];
-        const decade = Math.floor((s.year ?? 1980) / 10) * 10;
-        if (decade === currentDecade && s.id !== currentId) {
-          listSameEra.push(s);
+    if (currentPos) {
+      let minDist = Infinity;
+      let nearest = listSameEra[0];
+      for (let i = 0; i < listSameEra.length; i += 1) {
+        const candidate = listSameEra[i];
+        const pos = galaxyStore.listStarPosition.find(
+          (sp) => sp.songId === candidate.id,
+        );
+        if (!pos) {
+          continue;
+        }
+        const dx = pos.x - currentPos.x;
+        const dy = pos.y - currentPos.y;
+        const dist = dx * dx + dy * dy;
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = candidate;
         }
       }
+      nextSong = nearest;
+    } else {
+      // Fall back to random pick when position data is unavailable
+      nextSong = listSameEra[Math.floor(Math.random() * listSameEra.length)];
+    }
 
-      if (listSameEra.length === 0) {
-        this.isPlaying = false;
-        this.progress = 0;
-        return;
-      }
+    play(nextSong);
+    galaxyStore.selectedSongId = nextSong.id;
+    galaxyStore.flyToStar(nextSong.id);
+  }
 
-      // Find the nearest star by Euclidean distance in galaxy space
-      const currentPos = galaxyStore.listStarPosition.find(
-        (sp) => sp.songId === currentId,
-      );
-      let nextSong: ISong;
+  function setVolume(v: number) {
+    volume.value = Math.min(1, Math.max(0, v));
+  }
 
-      if (currentPos) {
-        let minDist = Infinity;
-        let nearest = listSameEra[0];
-        for (let i = 0; i < listSameEra.length; i += 1) {
-          const candidate = listSameEra[i];
-          const pos = galaxyStore.listStarPosition.find(
-            (sp) => sp.songId === candidate.id,
-          );
-          if (!pos) {
-            continue;
-          }
-          const dx = pos.x - currentPos.x;
-          const dy = pos.y - currentPos.y;
-          const dist = dx * dx + dy * dy;
-          if (dist < minDist) {
-            minDist = dist;
-            nearest = candidate;
-          }
-        }
-        nextSong = nearest;
-      } else {
-        // Fall back to random pick when position data is unavailable
-        nextSong = listSameEra[Math.floor(Math.random() * listSameEra.length)];
-      }
+  function togglePip() {
+    isPip.value = !isPip.value;
+  }
 
-      this.play(nextSong);
-      galaxyStore.selectedSongId = nextSong.id;
-      galaxyStore.flyToStar(nextSong.id);
-    },
+  function setProgress(p: number) {
+    progress.value = Math.min(1, Math.max(0, p));
+  }
 
-    setVolume(v: number) {
-      const clamped = Math.min(1, Math.max(0, v));
-      this.volume = clamped;
-      localStorage.setItem(STORAGE_KEY_VOLUME, String(clamped));
-    },
+  function setAutoPlay(value: boolean) {
+    autoPlay.value = value;
+  }
 
-    togglePip() {
-      this.isPip = !this.isPip;
-    },
-
-    setProgress(p: number) {
-      this.progress = Math.min(1, Math.max(0, p));
-    },
-
-    setAutoPlay(value: boolean) {
-      this.autoPlay = value;
-      localStorage.setItem(STORAGE_KEY_AUTO_PLAY, String(value));
-    },
-  },
+  return {
+    currentSong,
+    isPlaying,
+    isPip,
+    progress,
+    volume,
+    autoPlay,
+    play,
+    pause,
+    resume,
+    stop,
+    next,
+    setVolume,
+    togglePip,
+    setProgress,
+    setAutoPlay,
+  };
 });

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
+import { Search, X } from 'lucide-vue-next';
 import { useSongsStore } from '@/stores/songs';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { usePlayerStore } from '@/stores/player';
@@ -104,19 +105,13 @@ onUnmounted(() => {
       aria-label="Open search"
       @click="isExpanded = true"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
+      <Search :size="20" />
     </button>
 
     <!-- Expanded: input + results -->
     <div v-else class="flex flex-col w-80">
       <div class="flex items-center gap-2 bg-midnight border border-primary/30 focus-within:border-primary rounded-lg px-3 py-2 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-muted-lavender shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+        <Search :size="16" class="text-muted-lavender shrink-0" />
         <input
           ref="inputRef"
           v-model="query"
@@ -130,10 +125,7 @@ onUnmounted(() => {
           aria-label="Close search"
           @click="close"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <X :size="16" />
         </button>
       </div>
 

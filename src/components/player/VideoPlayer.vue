@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { Maximize, Minimize, Pause, Play, Volume2, Video } from 'lucide-vue-next';
 import { usePlayer } from '@/composables/usePlayer';
 import type { ISong } from '@/types';
 
@@ -157,20 +158,7 @@ onUnmounted(() => {
       v-if="!hasVideo"
       class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/40"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="w-12 h-12 opacity-40"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        stroke-width="1.5"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9A2.25 2.25 0 0013.5 5.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z"
-        />
-      </svg>
+      <Video :size="48" class="opacity-40" />
       <span class="text-sm">No video available</span>
     </div>
 
@@ -217,48 +205,15 @@ onUnmounted(() => {
           @click="togglePlayPause"
         >
           <!-- Pause icon -->
-          <svg
-            v-if="isPlaying"
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0A.75.75 0 0115 4.5h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H15a.75.75 0 01-.75-.75V5.25z"
-              clip-rule="evenodd"
-            />
-          </svg>
+          <Pause v-if="isPlaying" :size="20" fill="currentColor" />
           <!-- Play icon -->
-          <svg
-            v-else
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z"
-              clip-rule="evenodd"
-            />
-          </svg>
+          <Play v-else :size="20" fill="currentColor" />
         </button>
 
         <!-- Volume -->
         <div class="flex items-center gap-1.5 group">
           <!-- Volume icon -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4 text-white/70 flex-shrink-0"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zm5.146 2.752a.75.75 0 011.06.01A9.75 9.75 0 0121.75 12c0 1.93-.561 3.73-1.531 5.238a.75.75 0 01-1.282-.78A8.25 8.25 0 0020.25 12a8.25 8.25 0 00-1.313-4.458.75.75 0 01.01-1.06 .75.75 0 01.699-.67z"
-            />
-          </svg>
+          <Volume2 :size="16" class="text-white/70 flex-shrink-0" />
           <input
             type="range"
             min="0"
@@ -288,37 +243,9 @@ onUnmounted(() => {
           @click="toggleFullscreen"
         >
           <!-- Enter fullscreen icon -->
-          <svg
-            v-if="!isFullscreen"
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
-            />
-          </svg>
+          <Maximize v-if="!isFullscreen" :size="16" />
           <!-- Exit fullscreen icon -->
-          <svg
-            v-else
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
-            />
-          </svg>
+          <Minimize v-else :size="16" />
         </button>
       </div>
     </div>

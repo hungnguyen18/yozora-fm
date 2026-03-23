@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onClickOutside } from '@vueuse/core';
+import { LogOut } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 
 const authStore = useAuthStore();
@@ -45,11 +46,7 @@ async function signOut() {
         class="flex items-center gap-2 w-full px-4 py-3 text-sm text-soft-white hover:bg-white/5 transition-colors duration-150"
         @click="signOut"
       >
-        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
-        </svg>
+        <LogOut :size="16" class="shrink-0" />
         Sign out
       </button>
     </div>

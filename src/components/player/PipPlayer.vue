@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useDraggable } from '@vueuse/core';
+import { ArrowUpRight, X } from 'lucide-vue-next';
 import { usePlayerStore } from '@/stores/player';
 import { usePlayer } from '@/composables/usePlayer';
 import { GENRE_COLOR_MAP } from '@/types';
@@ -142,40 +143,14 @@ const expand = (): void => {
           aria-label="Expand player"
           @click.stop="expand"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="pip-btn__icon"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M4.5 19.5l15-15M19.5 4.5H8.25M19.5 4.5V15.75"
-            />
-          </svg>
+          <ArrowUpRight :size="12" />
         </button>
         <button
           class="pip-btn"
           aria-label="Close player"
           @click.stop="close"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="pip-btn__icon"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X :size="12" />
         </button>
       </div>
 

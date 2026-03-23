@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, toRef } from 'vue';
+import { formatTimeAgo } from '@vueuse/core';
+import { Flag, Trash2 } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useComments } from '@/composables/useComments';
 
@@ -25,26 +27,7 @@ const canSubmit = computed(
 );
 
 const formatRelativeTime = (createdAt: string): string => {
-  const diff = Date.now() - new Date(createdAt).getTime();
-  const minutes = Math.floor(diff / 60_000);
-
-  if (minutes < 1) {
-    return 'just now';
-  }
-
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-
-  const days = Math.floor(hours / 24);
-
-  return `${days}d ago`;
+  return formatTimeAgo(new Date(createdAt));
 };
 
 const handleSubmit = async () => {
@@ -136,7 +119,7 @@ const handleReport = async (commentId: number) => {
               title="Delete"
               @click="handleDelete(comment.id)"
             >
-              🗑
+              <Trash2 :size="14" />
             </button>
 
             <!-- Report — hover-visible flag -->
@@ -146,20 +129,7 @@ const handleReport = async (commentId: number) => {
               title="Report"
               @click="handleReport(comment.id)"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                <line x1="4" y1="22" x2="4" y2="15" />
-              </svg>
+              <Flag :size="14" />
             </button>
           </div>
         </div>
