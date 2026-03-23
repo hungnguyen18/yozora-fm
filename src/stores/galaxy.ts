@@ -219,8 +219,11 @@ export const useGalaxyStore = defineStore("galaxy", {
       const spanY = maxY - minY;
       const span = Math.max(spanX, spanY, 20);
 
-      // Calculate zoom to fit the span in ~60% of viewport
-      const viewportSize = Math.min(window.innerWidth, window.innerHeight);
+      // Calculate zoom to fit the span in ~60% of usable viewport
+      // Subtract 520px for the detail panel that may be open on the right
+      const PANEL_WIDTH = 520;
+      const usableWidth = window.innerWidth - PANEL_WIDTH;
+      const viewportSize = Math.min(usableWidth, window.innerHeight);
       const targetZoom = (viewportSize * 0.6) / span;
       const clampedZoom = Math.max(2, Math.min(targetZoom, 15));
 

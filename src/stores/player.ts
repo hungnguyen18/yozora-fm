@@ -17,7 +17,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   // Recently played song IDs — prevents next() from ping-ponging
   const MAX_RECENT = 20;
-  const listRecentId: number[] = [];
+  const listRecentId = ref<number[]>([]);
 
   function play(song: ISong) {
     currentSong.value = song;
@@ -25,9 +25,9 @@ export const usePlayerStore = defineStore("player", () => {
     progress.value = 0;
 
     // Track recently played to prevent next() ping-pong
-    listRecentId.push(song.id);
-    if (listRecentId.length > MAX_RECENT) {
-      listRecentId.shift();
+    listRecentId.value.push(song.id);
+    if (listRecentId.value.length > MAX_RECENT) {
+      listRecentId.value.shift();
     }
   }
 
@@ -70,7 +70,7 @@ export const usePlayerStore = defineStore("player", () => {
     const currentId = currentSong.value.id;
 
     // Collect candidates: same decade, has video, not recently played
-    const recentSet = new Set(listRecentId);
+    const recentSet = new Set(listRecentId.value);
     const listSameEra: ISong[] = [];
     for (let i = 0; i < songsStore.listSong.length; i += 1) {
       const s = songsStore.listSong[i];
