@@ -286,7 +286,7 @@ const timeDisplay = computed(() => {
 .pip-container {
   position: fixed;
   width: 400px;
-  z-index: 9999;
+  z-index: 55;
   cursor: grab;
   user-select: none;
   background: #141529;
