@@ -18,3 +18,6 @@ All notable changes to Yozora.fm are documented here.
 - **Scale cap overwriting highlights** — Zoom changes no longer reset hover/active star scale. Hover and active multipliers are preserved through `applyScaleCap` (`bc14615`)
 - **Trail reverting active star color** — Camera trail fade no longer overwrites the playing star's white highlight back to genre color (`bc14615`)
 - **Dead code cleanup** — Removed unused `computeStarPositions`, `eraStats` getter, and associated constants from galaxy store. Simplified `IStarPosition` to `{x, y, songId}` (`872031d`)
+- **listRecentId reactivity** — Changed from plain array to `ref<number[]>` so watchers and computed properties can track changes (`d98fd93`)
+- **Session trail rendering** — Bake alpha into RGB brightness (LineBasicMaterial ignores vertex alpha), use O(1) Map lookup and resolved count for correct gradient (`d98fd93`)
+- **Focus zoom clipping** — Constellation focus zoom now subtracts 520px panel width from viewport calculation (`d98fd93`)
