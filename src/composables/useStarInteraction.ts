@@ -44,11 +44,23 @@ export const useStarInteraction = (
   // Reusable vector for unprojecting screen to world
   const _unprojectNear = new THREE.Vector3();
 
-  // Screen projection cache — invalidated when camera moves
+  // Screen projection cache — invalidated when camera moves or tab regains focus
   let cachedProjections: Map<number, { sx: number; sy: number }> = new Map();
   let cacheZoom = -1;
   let cachePanX = NaN;
   let cachePanY = NaN;
+
+  // When tab regains focus, the render loop may have been paused and
+  // camera projection matrix is stale. Force-invalidate so hover/click
+  // recompute projections from scratch.
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      cachedProjections.clear();
+      cacheZoom = -1;
+      cachePanX = NaN;
+      cachePanY = NaN;
+    }
+  });
 
   const isCacheValid = (): boolean => {
     return (
