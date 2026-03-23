@@ -27,9 +27,13 @@ const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 20;
 
 // Camera state shared with CameraController via props
-const zoomLevel = ref(3);
+const INITIAL_ZOOM = 3;
+const zoomLevel = ref(INITIAL_ZOOM);
 const panX = ref(galaxyStore.panX);
 const panY = ref(galaxyStore.panY);
+
+// Sync initial zoom to store so flyToStar reads the correct starting zoom
+galaxyStore.setZoomLevel(INITIAL_ZOOM);
 
 // Sync store pan + zoom → local refs (minimap click-to-jump and flyToStar write to store)
 watch(
@@ -43,7 +47,10 @@ watch(
 watch(
   () => galaxyStore.zoomLevel,
   (storeZoom) => {
-    zoomLevel.value = storeZoom;
+    // Avoid feedback loop: only update if actually different
+    if (Math.abs(zoomLevel.value - storeZoom) > 0.001) {
+      zoomLevel.value = storeZoom;
+    }
   },
 );
 
