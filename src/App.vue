@@ -18,17 +18,15 @@ import { useSongsStore } from '@/stores/songs';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
 import { usePlayer } from '@/composables/usePlayer';
+import { useRouting } from '@/composables/useRouting';
 
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
 const galaxyStore = useGalaxyStore();
 
 useKeyboardNav();
-
-// Initialize the player composable — creates singleton video elements.
-// Video elements are managed programmatically (not in this template).
-// They live in a hidden container and are moved into VideoPlayer when it mounts.
 usePlayer();
+useRouting();
 
 const isLoading = computed(() => songsStore.isLoading);
 
