@@ -214,9 +214,16 @@ useEventListener(window, 'keydown', onKeyDown);
 .search-bar-root {
   position: fixed;
   top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
   z-index: 60;
+}
+
+.search-bar-root > * {
+  pointer-events: auto;
 }
 
 /* --- Collapsed trigger button --- */
