@@ -74,13 +74,20 @@ const onViewConstellation = () => {
         ✕
       </button>
 
-      <!-- 1. Video area placeholder (16:9 — 400×225) -->
-      <div
-        class="video-placeholder"
-        :style="{ boxShadow: `0 0 24px 4px ${genreColor}55, inset 0 0 0 2px ${genreColor}` }"
-      >
-        <span class="video-placeholder__label">Video Player</span>
-      </div>
+      <!-- 1. Video area — AnimeThemes WebM → YouTube fallback → external link card -->
+      <VideoPlayer
+        v-if="song?.animethemes_slug"
+        :song="song"
+        :genre-color="genreColor"
+      />
+      <YouTubeFallback
+        v-else-if="song?.youtube_id"
+        :youtube-id="song.youtube_id"
+      />
+      <ExternalLinkCard
+        v-else
+        :song="song"
+      />
 
       <!-- Panel body -->
       <div class="panel-body">
@@ -179,23 +186,6 @@ const onViewConstellation = () => {
 
 .close-btn:hover {
   color: #E8E8F0;
-}
-
-/* Video placeholder */
-.video-placeholder {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  flex-shrink: 0;
-  background-color: #0A0B1A;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.video-placeholder__label {
-  font-size: 14px;
-  color: #9B9BB4;
-  letter-spacing: 0.05em;
 }
 
 /* Panel body */
