@@ -332,18 +332,47 @@ const setInstanceColor = (
   if (mesh.instanceColor) { mesh.instanceColor.needsUpdate = true; }
 };
 
+// Returns the effective color for a star, accounting for genre filter and constellation focus dimming
+const getEffectiveColor = (instanceId: number): { r: number; g: number; b: number } | null => {
+  const base = listBaseColor.value[instanceId];
+  if (!base) { return null; }
+
+  let dim = 1;
+
+  // Genre filter dimming
+  const genre = galaxyStore.highlightedGenre;
+  if (genre !== null) {
+    const song = songsStore.listSong[instanceId];
+    if (!song || song.genre !== genre) {
+      dim = 0.2;
+    }
+  }
+
+  // Constellation focus dimming — non-artist stars dim to 30%
+  const focusedArtistId = galaxyStore.focusedArtistId;
+  if (focusedArtistId !== null) {
+    const song = songsStore.listSong[instanceId];
+    if (!song || song.artist_id !== focusedArtistId) {
+      dim = Math.min(dim, 0.3);
+    }
+  }
+
+  if (dim >= 1) { return base; }
+  return { r: base.r * dim, g: base.g * dim, b: base.b * dim };
+};
+
 watch(
   () => playerStore.currentSong,
   (song, _prevSong) => {
     const mesh = instancedMesh.value;
     if (!mesh) { return; }
 
-    // Restore previous active star to its original colour and base scale
+    // Restore previous active star to its effective colour (respects genre filter) and base scale
     if (previousActiveInstanceId !== null) {
       const prevId = previousActiveInstanceId;
-      const base = listBaseColor.value[prevId];
-      if (base) {
-        setInstanceColor(mesh, prevId, base.r, base.g, base.b);
+      const effective = getEffectiveColor(prevId);
+      if (effective) {
+        setInstanceColor(mesh, prevId, effective.r, effective.g, effective.b);
       }
       const baseScale = listBaseScale.value[prevId] ?? 1;
       setInstanceScale(mesh, prevId, baseScale);
@@ -362,6 +391,48 @@ watch(
     const baseScale = listBaseScale.value[instanceId] ?? 1;
     setInstanceScale(mesh, instanceId, baseScale * ACTIVE_SCALE_MULTIPLIER);
     previousActiveInstanceId = instanceId;
+  },
+);
+
+// Genre filter: dim non-matching stars when a genre is highlighted
+watch(
+  () => galaxyStore.highlightedGenre,
+  () => {
+    const mesh = instancedMesh.value;
+    if (!mesh) { return; }
+    const listSong = songsStore.listSong;
+
+    for (let i = 0; i < listSong.length; i += 1) {
+      const effective = getEffectiveColor(i);
+      if (!effective) { continue; }
+      setInstanceColor(mesh, i, effective.r, effective.g, effective.b);
+    }
+
+    // Re-apply active star white color if a song is playing
+    if (previousActiveInstanceId !== null) {
+      setInstanceColor(mesh, previousActiveInstanceId, activeColor.r, activeColor.g, activeColor.b);
+    }
+  },
+);
+
+// Constellation focus: dim non-artist stars when focusedArtistId is set
+watch(
+  () => galaxyStore.focusedArtistId,
+  () => {
+    const mesh = instancedMesh.value;
+    if (!mesh) { return; }
+    const listSong = songsStore.listSong;
+
+    for (let i = 0; i < listSong.length; i += 1) {
+      const effective = getEffectiveColor(i);
+      if (!effective) { continue; }
+      setInstanceColor(mesh, i, effective.r, effective.g, effective.b);
+    }
+
+    // Re-apply active star white color if a song is playing
+    if (previousActiveInstanceId !== null) {
+      setInstanceColor(mesh, previousActiveInstanceId, activeColor.r, activeColor.g, activeColor.b);
+    }
   },
 );
 
@@ -459,8 +530,6 @@ onBeforeRender(({ delta }) => {
     lastAppliedZoom = currentZoom;
   }
 
-  const baseColors = listBaseColor.value;
-
   // Determine current trail head position via lerp when trail is active
   let trailHeadX = 0;
   let trailHeadY = 0;
@@ -500,15 +569,15 @@ onBeforeRender(({ delta }) => {
     const fade = 1 - Math.min(trailPassTime[i] / TRAIL_FADE_DURATION, 1);
     trailBrightness[i] = fade;
 
-    const base = baseColors[i];
-    if (!base) { continue; }
+    const effective = getEffectiveColor(i);
+    if (!effective) { continue; }
 
-    // Lerp from base color toward bright white based on current brightness
+    // Lerp from effective color toward bright white based on current brightness
     const brightness = trailBrightness[i];
     trailColorHelper.setRGB(
-      base.r + (1 - base.r) * brightness,
-      base.g + (1 - base.g) * brightness,
-      base.b + (1 - base.b) * brightness,
+      effective.r + (1 - effective.r) * brightness,
+      effective.g + (1 - effective.g) * brightness,
+      effective.b + (1 - effective.b) * brightness,
     );
     mesh.setColorAt(i, trailColorHelper);
     needsUpdate = true;
@@ -517,8 +586,8 @@ onBeforeRender(({ delta }) => {
     if (trailPassTime[i] >= TRAIL_FADE_DURATION) {
       trailPassTime[i] = -1;
       trailBrightness[i] = 0;
-      // Restore exact base color
-      trailColorHelper.setRGB(base.r, base.g, base.b);
+      // Restore effective color (respects genre filter)
+      trailColorHelper.setRGB(effective.r, effective.g, effective.b);
       mesh.setColorAt(i, trailColorHelper);
       activeTrailStars.delete(i);
     }
