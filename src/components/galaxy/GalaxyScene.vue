@@ -10,6 +10,7 @@ import { useGalaxyStore } from '@/stores/galaxy';
 import { useStarInteraction } from '@/composables/useStarInteraction';
 import { useLOD } from '@/composables/useLOD';
 import CameraController from './CameraController.vue';
+import ConstellationLines from './ConstellationLines.vue';
 import Nebula from './Nebula.vue';
 import ParticleDust from './ParticleDust.vue';
 import StarField from './StarField.vue';
@@ -146,6 +147,9 @@ const onTresReady = (ctx: TresContext) => {
         :hovered-instance-id="hoveredInstanceId"
         :camera="activeCamera"
       />
+
+      <!-- Constellation lines: connects stars of the same artist, revealed on hover -->
+      <ConstellationLines />
     </TresCanvas>
 
     <!-- HTML tooltip overlay: follows the mouse, shows song title on hover -->

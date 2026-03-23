@@ -60,6 +60,8 @@ export const useGalaxyStore = defineStore("galaxy", {
     selectedSongId: null as number | null,
     highlightedGenre: null as string | null,
     lodTier: "far" as TLodTier,
+    // Maps artistId → list of songIds for artists with 2+ songs
+    constellationData: new Map<number, number[]>(),
   }),
   getters: {
     currentEra: (state): IEra | null => state.focusedEra,
@@ -122,6 +124,29 @@ export const useGalaxyStore = defineStore("galaxy", {
       }
 
       this.listStarPosition = listPosition;
+    },
+
+    computeConstellations(listSong: ISong[]) {
+      // Group songs by artist_id; only retain artists with 2+ songs
+      const grouped = new Map<number, number[]>();
+
+      for (let i = 0; i < listSong.length; i += 1) {
+        const song = listSong[i];
+        const artistId = song.artist_id;
+        if (!grouped.has(artistId)) {
+          grouped.set(artistId, []);
+        }
+        grouped.get(artistId)!.push(song.id);
+      }
+
+      const result = new Map<number, number[]>();
+      for (const [artistId, listSongId] of grouped.entries()) {
+        if (listSongId.length >= 2) {
+          result.set(artistId, listSongId);
+        }
+      }
+
+      this.constellationData = result;
     },
 
     flyToStar(songId: number) {
