@@ -24,6 +24,22 @@ const genreColor = computed(() => {
   return GENRE_COLOR_MAP[genre] || GENRE_COLOR_MAP.other;
 });
 
+// Hero cover art: prefer anime cover, fallback to album art
+const heroImageUrl = computed(() => {
+  if (!song.value) {
+    return null;
+  }
+  return song.value.anime?.cover_url ?? song.value.album_art_url ?? null;
+});
+
+// Gradient placeholder when no cover art
+const heroGradientStyle = computed(() => {
+  const color = genreColor.value;
+  return {
+    background: `linear-gradient(160deg, ${color}30 0%, #141529 50%, ${color}15 100%)`,
+  };
+});
+
 // Sequence label e.g. "OP1", "ED2"
 const sequenceBadge = computed(() => {
   if (!song.value) {
@@ -78,20 +94,46 @@ const onViewConstellation = () => {
         <X :size="18" />
       </button>
 
-      <!-- 1. Video area — AnimeThemes WebM → YouTube fallback → external link card -->
-      <VideoPlayer
-        v-if="song?.animethemes_slug"
-        :song="song"
-        :genre-color="genreColor"
-      />
-      <YouTubeFallback
-        v-else-if="song?.youtube_id"
-        :youtube-id="song.youtube_id"
-      />
-      <ExternalLinkCard
-        v-else
-        :song="song"
-      />
+      <!-- Hero image area -->
+      <div class="hero-area">
+        <img
+          v-if="heroImageUrl"
+          :src="heroImageUrl"
+          :alt="song?.anime?.title ?? song?.title ?? 'Cover art'"
+          class="hero-image"
+        />
+        <div
+          v-else
+          class="hero-gradient"
+          :style="heroGradientStyle"
+        >
+          <div class="hero-gradient__inner">
+            <div
+              class="hero-gradient__orb"
+              :style="{ background: `radial-gradient(circle, ${genreColor}40 0%, transparent 70%)` }"
+            />
+          </div>
+        </div>
+        <div class="hero-overlay" />
+      </div>
+
+      <!-- Video area — AnimeThemes WebM / YouTube fallback / external link card -->
+      <div class="video-area">
+        <VideoPlayer
+          v-if="song?.animethemes_slug"
+          :song="song"
+          :genre-color="genreColor"
+        />
+        <YouTubeFallback
+          v-else-if="song?.youtube_id"
+          :youtube-id="song.youtube_id"
+        />
+        <ExternalLinkCard
+          v-else
+          :song="song"
+          :genre-color="genreColor"
+        />
+      </div>
 
       <!-- Auto-play toggle — sits between the video area and the panel body -->
       <div class="autoplay-row">
@@ -110,7 +152,7 @@ const onViewConstellation = () => {
 
       <!-- Panel body -->
       <div class="panel-body">
-        <!-- 2. Song info -->
+        <!-- Song info -->
         <div v-if="song" class="song-info">
           <h2 class="song-info__title">{{ song.title }}</h2>
           <p v-if="song.title_jp" class="song-info__title-jp">{{ song.title_jp }}</p>
@@ -121,34 +163,36 @@ const onViewConstellation = () => {
           </p>
         </div>
 
-        <!-- 3. OP/ED badge -->
-        <div v-if="sequenceBadge" class="badge-row">
+        <!-- OP/ED badge + Genre tags row -->
+        <div class="meta-row">
           <span
+            v-if="sequenceBadge"
             class="op-ed-badge"
             :style="{ borderColor: genreColor, color: genreColor }"
           >{{ sequenceBadge }}</span>
-        </div>
 
-        <!-- 4. Genre tags -->
-        <div v-if="genreTags.length > 0" class="genre-tags">
           <button
             v-for="tag in genreTags"
             :key="tag"
             class="genre-tag"
-            :style="{ backgroundColor: `${GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other}22`, color: GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other, borderColor: GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other }"
+            :style="{
+              backgroundColor: `${GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other}15`,
+              color: GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other,
+              borderColor: `${GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other}50`,
+            }"
             @click="onGenreClick(tag)"
           >
             {{ tag }}
           </button>
         </div>
 
-        <!-- 5. View artist constellation -->
+        <!-- View artist constellation -->
         <button class="constellation-btn" @click="onViewConstellation">
           <Orbit :size="14" />
           <span>View artist constellation</span>
         </button>
 
-        <!-- 6. Community section -->
+        <!-- Community section -->
         <div v-if="song" class="community-section">
           <VoteButton :song-id="song.id" />
           <TriviaSection :song-id="song.id" />
@@ -164,10 +208,10 @@ const onViewConstellation = () => {
   position: fixed;
   top: 0;
   right: 0;
-  width: 400px;
+  width: 480px;
   height: 100vh;
   background-color: #141529;
-  border-left: 1px solid rgba(155, 155, 180, 0.15);
+  border-left: 1px solid rgba(155, 155, 180, 0.12);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -195,70 +239,156 @@ const onViewConstellation = () => {
   position: absolute;
   top: 12px;
   right: 16px;
-  background: transparent;
-  border: none;
+  background: rgba(20, 21, 41, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(155, 155, 180, 0.15);
   color: #9B9BB4;
   font-size: 18px;
   cursor: pointer;
   line-height: 1;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: color 0.2s;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: color 0.2s, background-color 0.2s;
+  z-index: 10;
 }
 
 .close-btn:hover {
   color: #E8E8F0;
+  background: rgba(20, 21, 41, 0.85);
+}
+
+/* Hero image area */
+.hero-area {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-gradient {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-gradient__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-gradient__orb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 180px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: orbPulse 4s ease-in-out infinite;
+}
+
+@keyframes orbPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+.hero-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(transparent, #141529);
+  pointer-events: none;
+}
+
+/* Video area */
+.video-area {
+  padding: 0 20px;
+  margin-top: -16px;
+  position: relative;
+  z-index: 2;
 }
 
 /* Panel body */
 .panel-body {
-  padding: 20px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 /* Song info */
+.song-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .song-info__title {
-  font-size: 1.25rem; /* text-xl */
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #E8E8F0;
-  margin: 0 0 4px;
-  line-height: 1.3;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
 .song-info__title-jp {
   font-size: 0.875rem;
   color: #9B9BB4;
-  margin: 0 0 6px;
+  margin: 0;
+  opacity: 0.8;
 }
 
 .song-info__artist {
-  font-size: 1.125rem; /* text-lg */
-  color: #9B9BB4;
-  margin: 0 0 4px;
+  font-size: 1.0625rem;
+  color: #c4c4d8;
+  margin: 0;
+  font-weight: 500;
 }
 
 .song-info__anime {
-  font-size: 0.875rem; /* text-sm */
+  font-size: 0.875rem;
   color: #9B9BB4;
   margin: 0;
 }
 
 .song-info__year {
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
-/* OP/ED badge */
-.badge-row {
+/* Meta row — badge + genre tags inline */
+.meta-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
+/* OP/ED badge */
 .op-ed-badge {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 3px 12px;
   border-radius: 9999px;
   border: 1px solid;
   font-size: 0.75rem;
@@ -268,12 +398,6 @@ const onViewConstellation = () => {
 }
 
 /* Genre tags */
-.genre-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .genre-tag {
   padding: 3px 12px;
   border-radius: 9999px;
@@ -283,6 +407,7 @@ const onViewConstellation = () => {
   cursor: pointer;
   transition: opacity 0.2s;
   background: transparent;
+  text-transform: capitalize;
 }
 
 .genre-tag:hover {
@@ -295,13 +420,14 @@ const onViewConstellation = () => {
   align-items: center;
   gap: 6px;
   background: transparent;
-  border: 1px solid rgba(79, 70, 229, 0.3);
-  border-radius: 6px;
-  padding: 6px 12px;
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  border-radius: 8px;
+  padding: 8px 14px;
   font-size: 0.8125rem;
   color: #818CF8;
   cursor: pointer;
   transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+  align-self: flex-start;
 }
 
 .constellation-btn:hover {
@@ -315,8 +441,8 @@ const onViewConstellation = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
-  border-bottom: 1px solid rgba(155, 155, 180, 0.12);
+  padding: 10px 24px;
+  border-bottom: 1px solid rgba(155, 155, 180, 0.1);
 }
 
 .autoplay-label {
@@ -361,9 +487,27 @@ const onViewConstellation = () => {
 
 /* Community section */
 .community-section {
-  margin-top: 8px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Scrollbar styling */
+.detail-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.detail-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.detail-panel::-webkit-scrollbar-thumb {
+  background: rgba(155, 155, 180, 0.2);
+  border-radius: 4px;
+}
+
+.detail-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 155, 180, 0.35);
 }
 </style>

@@ -1,18 +1,57 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useGalaxyStore } from '@/stores/galaxy';
+import { useSongsStore } from '@/stores/songs';
+import { GENRE_COLOR_MAP } from '@/types';
+import type { TGenre } from '@/types';
 
 const galaxyStore = useGalaxyStore();
+const songsStore = useSongsStore();
 
-const CANVAS_SIZE = 150;
-// Galaxy radius in world units — matches R_MAX in galaxy store
+const CANVAS_SIZE = 160;
 const R_MAX = 500;
+const TOTAL_SPAN_YEARS = 46;
+const MAX_ANGLE_DEG = 1620;
+
+// Sample every Nth star so we draw ~300-500 dots, not all 9111
+const SAMPLE_STEP = 20;
+
+// Genre arm map (must match galaxy store / layout)
+const GENRE_ARM_MAP: Record<string, number> = {
+  rock: 0,
+  electronic: 1,
+  pop: 2,
+  ballad: 3,
+  orchestral: 0,
+  other: 2,
+};
+
+// Mulberry32 seeded PRNG (must match galaxy store)
+const seededRandom = (seed: number): (() => number) => {
+  let s = seed >>> 0;
+  return () => {
+    s += 0x6d2b79f5;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 // Map world coordinates [-R_MAX, R_MAX] -> canvas pixels [0, CANVAS_SIZE]
 const worldToCanvas = (worldVal: number): number =>
   ((worldVal + R_MAX) / (R_MAX * 2)) * CANVAS_SIZE;
+
+// Decade ring definitions
+const LIST_DECADE = [
+  { year: 1980, label: '80s' },
+  { year: 1990, label: '90s' },
+  { year: 2000, label: '00s' },
+  { year: 2010, label: '10s' },
+  { year: 2020, label: '20s' },
+];
 
 const draw = () => {
   const canvas = canvasRef.value;
@@ -27,23 +66,84 @@ const draw = () => {
   ctx.fillStyle = 'rgba(10, 11, 26, 0.85)';
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-  // Draw stars as 1px colored dots
-  const listStar = galaxyStore.listStarPosition;
-  for (let i = 0; i < listStar.length; i += 1) {
-    const star = listStar[i];
-    const cx = worldToCanvas(star.x);
-    const cy = worldToCanvas(-star.y); // flip Y: canvas Y grows down, world Y grows up
+  const centerPx = CANVAS_SIZE / 2;
 
-    ctx.fillStyle = 'rgba(192, 192, 208, 0.7)';
-    ctx.fillRect(cx, cy, 1.5, 1.5);
+  // Draw decade ring circles
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < LIST_DECADE.length; i += 1) {
+    const decade = LIST_DECADE[i];
+    const worldRadius = R_MAX * (1 - (decade.year - 1980) / TOTAL_SPAN_YEARS);
+    const canvasRadius = (worldRadius / (R_MAX * 2)) * CANVAS_SIZE;
+
+    // Ring circle
+    ctx.strokeStyle = 'rgba(79, 70, 229, 0.2)';
+    ctx.beginPath();
+    ctx.arc(centerPx, centerPx, canvasRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Label positioned at top of ring
+    ctx.fillStyle = 'rgba(155, 155, 180, 0.6)';
+    ctx.font = '7px "Space Grotesk", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(decade.label, centerPx, centerPx - canvasRadius - 1);
   }
 
-  // Draw viewport rectangle: compute visible world bounds from pan + zoom
+  // Draw sampled stars as colored dots
+  const listSong = songsStore.listSong;
+  if (listSong.length > 0) {
+    for (let i = 0; i < listSong.length; i += SAMPLE_STEP) {
+      const song = listSong[i];
+      const year = song.year ?? 1980;
+      const clampedYear = Math.max(1980, Math.min(year, 1980 + TOTAL_SPAN_YEARS));
+      const normalised = (clampedYear - 1980) / TOTAL_SPAN_YEARS;
+
+      const baseAngleDeg = normalised * MAX_ANGLE_DEG;
+      const baseRadius = R_MAX * (1 - normalised);
+
+      const armIndex = GENRE_ARM_MAP[song.genre ?? 'other'] ?? 2;
+      const armOffsetDeg = armIndex * 90;
+
+      const rng = seededRandom(song.id);
+      const angleJitterDeg = (rng() * 2 - 1) * 15;
+      const radiusJitterPct = (rng() * 2 - 1) * 0.08;
+
+      const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
+      const angleRad = (angleDeg * Math.PI) / 180;
+      const radius = baseRadius * (1 + radiusJitterPct);
+
+      const worldX = radius * Math.cos(angleRad);
+      const worldY = radius * Math.sin(angleRad);
+
+      const cx = worldToCanvas(worldX);
+      const cy = worldToCanvas(-worldY);
+
+      const genreKey = (song.genre ?? 'other') as TGenre;
+      const hexColor = GENRE_COLOR_MAP[genreKey] ?? GENRE_COLOR_MAP.other;
+
+      ctx.fillStyle = hexColor;
+      ctx.globalAlpha = 0.75;
+      ctx.fillRect(cx, cy, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    // Fallback: draw from pre-computed star positions (gray dots)
+    const listStar = galaxyStore.listStarPosition;
+    for (let i = 0; i < listStar.length; i += SAMPLE_STEP) {
+      const star = listStar[i];
+      const cx = worldToCanvas(star.x);
+      const cy = worldToCanvas(-star.y);
+
+      ctx.fillStyle = 'rgba(192, 192, 208, 0.7)';
+      ctx.fillRect(cx, cy, 1.5, 1.5);
+    }
+  }
+
+  // Draw viewport rectangle
   const zoom = galaxyStore.zoomLevel;
   const screenW = window.innerWidth;
   const screenH = window.innerHeight;
 
-  // Half-size of visible world area (orthographic)
   const halfWorldW = (screenW / 2) / zoom;
   const halfWorldH = (screenH / 2) / zoom;
 
@@ -70,6 +170,7 @@ onMounted(() => {
 watch(
   () => [
     galaxyStore.listStarPosition.length,
+    songsStore.listSong.length,
     galaxyStore.panX,
     galaxyStore.panY,
     galaxyStore.zoomLevel,
@@ -82,13 +183,11 @@ const onMinimapClick = (e: MouseEvent) => {
   if (!canvas) { return; }
 
   const rect = canvas.getBoundingClientRect();
-  // Pixel position within the canvas
   const clickX = (e.clientX - rect.left) * (CANVAS_SIZE / rect.width);
   const clickY = (e.clientY - rect.top) * (CANVAS_SIZE / rect.height);
 
-  // Convert canvas pixel -> world coordinates
   const worldX = (clickX / CANVAS_SIZE) * R_MAX * 2 - R_MAX;
-  const worldY = -((clickY / CANVAS_SIZE) * R_MAX * 2 - R_MAX); // flip Y back
+  const worldY = -((clickY / CANVAS_SIZE) * R_MAX * 2 - R_MAX);
 
   galaxyStore.setPan(worldX, worldY);
 };
@@ -137,8 +236,8 @@ const onMinimapClick = (e: MouseEvent) => {
 
 .minimap-canvas {
   display: block;
-  width: 150px;
-  height: 150px;
+  width: 160px;
+  height: 160px;
   cursor: crosshair;
 }
 

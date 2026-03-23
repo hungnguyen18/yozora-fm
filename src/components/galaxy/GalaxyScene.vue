@@ -14,6 +14,7 @@ import ConstellationLines from './ConstellationLines.vue';
 import Nebula from './Nebula.vue';
 import ParticleDust from './ParticleDust.vue';
 import RippleEffect from './RippleEffect.vue';
+import DecadeRings from './DecadeRings.vue';
 import StarField from './StarField.vue';
 
 const galaxyStore = useGalaxyStore();
@@ -148,6 +149,9 @@ const onTresReady = (ctx: TresContext) => {
       <Nebula />
       <ParticleDust :particle-count="particleCount" />
 
+      <!-- Decade ring indicators behind stars -->
+      <DecadeRings />
+
       <!-- Star field: all songs rendered as a single InstancedMesh -->
       <StarField
         ref="starFieldRef"
@@ -213,9 +217,20 @@ const onTresReady = (ctx: TresContext) => {
   position: absolute;
   z-index: 5;
   pointer-events: none;
-  font-size: 0.75rem;
-  color: rgba(232, 232, 240, 0.7);
-  transform: translate(6px, -50%);
+  font-size: 0.625rem;
+  line-height: 1;
+  color: rgba(232, 232, 240, 0.85);
+  transform: translate(8px, -50%);
   white-space: nowrap;
+  text-shadow:
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.8);
+  background: rgba(10, 11, 26, 0.5);
+  padding: 1px 4px;
+  border-radius: 2px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

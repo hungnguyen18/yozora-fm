@@ -1,12 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
-import type { LockFunc } from "@supabase/auth-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 // No-op lock: executes the callback immediately without acquiring
 // navigator.locks, which eliminates the "Lock ... to recover" warnings.
-const lockNoOp: LockFunc = async (_name, _acquireTimeout, fn) => {
+// Matches the LockFunc signature from @supabase/auth-js.
+const lockNoOp = async <R>(
+  _name: string,
+  _acquireTimeout: number,
+  fn: () => Promise<R>,
+): Promise<R> => {
   return fn();
 };
 

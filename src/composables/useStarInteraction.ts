@@ -5,7 +5,7 @@ import { usePlayerStore } from "@/stores/player";
 import { useSongsStore } from "@/stores/songs";
 
 // Maximum screen-space distance (pixels) to count as a star click/hover
-const HIT_RADIUS_PX = 16;
+const HIT_RADIUS_PX = 24;
 
 export const useStarInteraction = (
   meshRef: { value: THREE.InstancedMesh | null },

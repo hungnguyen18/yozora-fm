@@ -15,7 +15,7 @@ const songsStore = useSongsStore();
 const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
 const { computeBuffers } = useGalaxyLayout();
-const { showLabels, labelVoteThreshold } = useLOD();
+const { showLabels, labelVoteThreshold, labelMaxCount } = useLOD();
 const { scene } = useTresContext();
 
 const instancedMesh = shallowRef<THREE.InstancedMesh | null>(null);
@@ -282,9 +282,50 @@ watch(instancedMesh, (mesh) => {
 
 const { onBeforeRender } = useLoop();
 
+// Cap star visual size at high zoom to prevent white-blob effect.
+// At zoom > ZOOM_CAP_START, scales are reduced so stars stay readable.
+const ZOOM_CAP_START = 4;
+const MAX_SCREEN_STAR_SIZE = 3.0; // maximum world-space scale allowed
+const scaleCapHelper = new THREE.Matrix4();
+const scaleCapPos = new THREE.Vector3();
+const scaleCapQuat = new THREE.Quaternion();
+const scaleCapScale = new THREE.Vector3();
+let lastAppliedZoom = -1;
+
+const applyScaleCap = (mesh: THREE.InstancedMesh, zoom: number) => {
+  const baseScales = listBaseScale.value;
+  if (baseScales.length === 0) { return; }
+
+  const count = mesh.count;
+  // Scale factor: above ZOOM_CAP_START, shrink proportionally
+  const capFactor = zoom > ZOOM_CAP_START
+    ? ZOOM_CAP_START / zoom
+    : 1;
+
+  for (let i = 0; i < count; i += 1) {
+    const baseScale = baseScales[i] ?? 1;
+    const cappedScale = Math.min(baseScale * capFactor, MAX_SCREEN_STAR_SIZE);
+
+    mesh.getMatrixAt(i, scaleCapHelper);
+    scaleCapHelper.decompose(scaleCapPos, scaleCapQuat, scaleCapScale);
+    scaleCapScale.set(cappedScale, cappedScale, 1);
+    scaleCapHelper.compose(scaleCapPos, scaleCapQuat, scaleCapScale);
+    mesh.setMatrixAt(i, scaleCapHelper);
+  }
+
+  mesh.instanceMatrix.needsUpdate = true;
+};
+
 onBeforeRender(({ delta }) => {
   const mesh = instancedMesh.value;
   if (!mesh || !mesh.instanceColor) { return; }
+
+  // Apply star scale cap when zoom changes
+  const currentZoom = galaxyStore.zoomLevel;
+  if (currentZoom !== lastAppliedZoom) {
+    applyScaleCap(mesh, currentZoom);
+    lastAppliedZoom = currentZoom;
+  }
 
   const worldPositions = listStarWorldPosition.value;
   const baseColors = listBaseColor.value;
@@ -382,8 +423,11 @@ export interface IStarLabel {
   songId: number;
 }
 
+// Minimum screen-space distance (px) between two labels to avoid overlap
+const LABEL_MIN_SPACING = 80;
+
 // Compute visible star labels projected to screen space.
-// Filtered by LOD vote threshold and viewport bounds.
+// Filtered by LOD vote threshold, viewport bounds, spatial culling, and hard cap.
 const visibleLabels = computed<IStarLabel[]>(() => {
   if (!showLabels.value) { return []; }
 
@@ -393,10 +437,12 @@ const visibleLabels = computed<IStarLabel[]>(() => {
   const listSong = songsStore.listSong;
   const worldPositions = listStarWorldPosition.value;
   const threshold = labelVoteThreshold.value;
+  const maxCount = labelMaxCount.value;
 
-  if (listSong.length === 0 || worldPositions.length === 0) { return []; }
+  if (listSong.length === 0 || worldPositions.length === 0 || maxCount === 0) { return []; }
 
-  const result: IStarLabel[] = [];
+  // Collect candidates that pass the vote threshold and are on screen
+  const listCandidate: (IStarLabel & { voteCount: number })[] = [];
 
   for (let i = 0; i < listSong.length; i += 1) {
     const song = listSong[i];
@@ -409,12 +455,46 @@ const visibleLabels = computed<IStarLabel[]>(() => {
     const screenPos = projectToScreen(worldPos, camera);
     if (!screenPos) { continue; }
 
-    result.push({
+    listCandidate.push({
       x: screenPos.x,
       y: screenPos.y,
       text: song.title,
       songId: song.id,
+      voteCount: song.vote_count,
     });
+  }
+
+  // Sort by vote count descending so the most popular labels win placement
+  listCandidate.sort((a, b) => b.voteCount - a.voteCount);
+
+  // Spatial culling: greedily place labels with minimum spacing between them
+  const result: IStarLabel[] = [];
+  const spacingSq = LABEL_MIN_SPACING * LABEL_MIN_SPACING;
+
+  for (let i = 0; i < listCandidate.length; i += 1) {
+    if (result.length >= maxCount) { break; }
+
+    const candidate = listCandidate[i];
+    let isTooClose = false;
+
+    for (let j = 0; j < result.length; j += 1) {
+      const placed = result[j];
+      const dx = candidate.x - placed.x;
+      const dy = candidate.y - placed.y;
+      if (dx * dx + dy * dy < spacingSq) {
+        isTooClose = true;
+        break;
+      }
+    }
+
+    if (!isTooClose) {
+      result.push({
+        x: candidate.x,
+        y: candidate.y,
+        text: candidate.text,
+        songId: candidate.songId,
+      });
+    }
   }
 
   return result;
