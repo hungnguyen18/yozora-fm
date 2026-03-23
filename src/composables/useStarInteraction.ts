@@ -6,15 +6,55 @@ import { useSongsStore } from "@/stores/songs";
 import { usePlayer } from "@/composables/usePlayer";
 import type { IStarSpatialIndex } from "@/composables/useStarSpatialIndex";
 
-// Maximum screen-space distance (pixels) to count as a star click/hover.
+// ─── Constants ───────────────────────────────────────────────────────
+// Maximum screen-space distance (px) for a hit
 const HIT_RADIUS_PX = 40;
-
-// World-space search radius used to query the spatial grid.
-// This is dynamically scaled by zoom so fewer stars are checked at far zoom.
+// World-space search radius for the spatial grid (scaled by zoom)
 const BASE_SEARCH_RADIUS = 120;
-
-// Throttle hover detection to ~30 fps (33ms)
+// Throttle hover to ~30 fps
 const THROTTLE_MS = 33;
+
+// ─── Reusable THREE objects (allocated once, reused every call) ──────
+const _projected = new THREE.Vector3();
+const _pos = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _scale = new THREE.Vector3();
+const _matrix = new THREE.Matrix4();
+const _unproject = new THREE.Vector3();
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+/** Project a star's world position to screen pixels. Always fresh. */
+const projectStar = (
+  instanceIndex: number,
+  mesh: THREE.InstancedMesh,
+  cam: THREE.Camera,
+): { sx: number; sy: number } | null => {
+  mesh.getMatrixAt(instanceIndex, _matrix);
+  _matrix.decompose(_pos, _quat, _scale);
+  _projected.copy(_pos).project(cam);
+  if (_projected.z > 1) {
+    return null;
+  }
+  return {
+    sx: (_projected.x * 0.5 + 0.5) * window.innerWidth,
+    sy: (-_projected.y * 0.5 + 0.5) * window.innerHeight,
+  };
+};
+
+/** Convert screen pixels to world XY (orthographic z=0 plane). */
+const screenToWorld = (
+  screenX: number,
+  screenY: number,
+  cam: THREE.Camera,
+): { wx: number; wy: number } => {
+  const ndcX = (screenX / window.innerWidth) * 2 - 1;
+  const ndcY = -(screenY / window.innerHeight) * 2 + 1;
+  _unproject.set(ndcX, ndcY, 0).unproject(cam);
+  return { wx: _unproject.x, wy: _unproject.y };
+};
+
+// ─── Composable ──────────────────────────────────────────────────────
 
 export const useStarInteraction = (
   meshRef: { value: THREE.InstancedMesh | null },
@@ -34,169 +74,44 @@ export const useStarInteraction = (
   const tooltipY = ref(0);
   const tooltipText = ref("");
 
-  // Reusable vectors for projection
-  const _projected = new THREE.Vector3();
-  const _pos = new THREE.Vector3();
-  const _quat = new THREE.Quaternion();
-  const _scale = new THREE.Vector3();
-  const _matrix = new THREE.Matrix4();
-
-  // Reusable vector for unprojecting screen to world
-  const _unprojectNear = new THREE.Vector3();
-
-  // Screen projection cache — invalidated when camera moves or tab regains focus
-  let cachedProjections: Map<number, { sx: number; sy: number }> = new Map();
-  let cacheZoom = -1;
-  let cachePanX = NaN;
-  let cachePanY = NaN;
-
-  // When tab regains focus, the render loop may have been paused and
-  // camera projection matrix is stale. Force-invalidate so hover/click
-  // recompute projections from scratch.
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      cachedProjections.clear();
-      cacheZoom = -1;
-      cachePanX = NaN;
-      cachePanY = NaN;
-    }
-  });
-
-  const isCacheValid = (): boolean => {
-    return (
-      cacheZoom === galaxyStore.zoomLevel &&
-      cachePanX === galaxyStore.panX &&
-      cachePanY === galaxyStore.panY
-    );
-  };
-
-  const invalidateCache = (): void => {
-    cachedProjections.clear();
-    cacheZoom = galaxyStore.zoomLevel;
-    cachePanX = galaxyStore.panX;
-    cachePanY = galaxyStore.panY;
-  };
-
-  // Project a single star instance to screen pixels, using cache when valid.
-  const projectInstance = (
-    instanceIndex: number,
-    mesh: THREE.InstancedMesh,
-    cam: THREE.Camera,
-  ): { sx: number; sy: number } | null => {
-    const cached = cachedProjections.get(instanceIndex);
-    if (cached) {
-      return cached;
-    }
-
-    mesh.getMatrixAt(instanceIndex, _matrix);
-    _matrix.decompose(_pos, _quat, _scale);
-
-    _projected.copy(_pos).project(cam);
-
-    // Skip points behind camera
-    if (_projected.z > 1) {
-      return null;
-    }
-
-    const sx = (_projected.x * 0.5 + 0.5) * window.innerWidth;
-    const sy = (-_projected.y * 0.5 + 0.5) * window.innerHeight;
-
-    const result = { sx, sy };
-    cachedProjections.set(instanceIndex, result);
-    return result;
-  };
-
-  // Unproject screen position to world XY (z=0 plane for orthographic camera)
-  const screenToWorld = (
-    screenX: number,
-    screenY: number,
-    cam: THREE.Camera,
-  ): { wx: number; wy: number } => {
-    // Convert screen pixels to NDC
-    const ndcX = (screenX / window.innerWidth) * 2 - 1;
-    const ndcY = -(screenY / window.innerHeight) * 2 + 1;
-
-    _unprojectNear.set(ndcX, ndcY, 0);
-    _unprojectNear.unproject(cam);
-
-    return { wx: _unprojectNear.x, wy: _unprojectNear.y };
-  };
-
-  // Project a star without using cache — for click detection where accuracy
-  // is critical (cache can be stale after flyToStar / applyScaleCap).
-  const projectInstanceFresh = (
-    instanceIndex: number,
-    mesh: THREE.InstancedMesh,
-    cam: THREE.Camera,
-  ): { sx: number; sy: number } | null => {
-    mesh.getMatrixAt(instanceIndex, _matrix);
-    _matrix.decompose(_pos, _quat, _scale);
-
-    _projected.copy(_pos).project(cam);
-
-    if (_projected.z > 1) {
-      return null;
-    }
-
-    const sx = (_projected.x * 0.5 + 0.5) * window.innerWidth;
-    const sy = (-_projected.y * 0.5 + 0.5) * window.innerHeight;
-    return { sx, sy };
-  };
-
-  // Find the nearest star instance to a screen position (in pixels).
-  // Uses the spatial index to only check nearby stars (~20-50) instead of all 9111.
-  // `fresh` = true bypasses the projection cache (use for clicks after camera animation).
-  const findNearestStar = (
-    screenX: number,
-    screenY: number,
-    hitRadiusPx: number,
-    fresh = false,
-  ): number => {
+  /**
+   * Find the nearest star to a screen position.
+   * Always computes fresh projections — no caching.
+   * Ensures the camera projection matrix is up-to-date before projecting.
+   */
+  const findNearestStar = (screenX: number, screenY: number): number => {
     const mesh = meshRef.value;
     const cam = camera.value;
     if (!mesh || !cam) {
       return -1;
     }
 
-    // Force-update camera projection matrix to ensure it matches current state.
-    // After flyToStar() animation + applyScaleCap(), the matrix could be stale.
-    if (fresh && "updateProjectionMatrix" in cam) {
+    // Ensure camera matrix is current (may be stale after tab switch,
+    // flyToStar animation, or applyScaleCap modifications).
+    if ("updateProjectionMatrix" in cam) {
       (cam as THREE.OrthographicCamera).updateProjectionMatrix();
     }
 
-    // Invalidate projection cache when camera has moved
-    if (!isCacheValid()) {
-      invalidateCache();
-    }
-
-    // Unproject screen position to world coordinates
+    // Unproject click to world coordinates for spatial query
     const { wx, wy } = screenToWorld(screenX, screenY, cam);
-
-    // Scale search radius inversely with zoom — at higher zoom, stars are
-    // spread further apart in screen space so we need a smaller world radius
     const zoom = galaxyStore.zoomLevel;
     const searchRadius = BASE_SEARCH_RADIUS / Math.max(zoom, 0.2);
 
-    // Query the spatial grid for candidate star indices
+    // Query spatial grid for nearby star indices (~20-50 candidates)
     const listCandidate = spatialIndex.queryNear(wx, wy, searchRadius);
 
-    let bestDist = hitRadiusPx * hitRadiusPx;
+    let bestDist = HIT_RADIUS_PX * HIT_RADIUS_PX;
     let bestIndex = -1;
-
-    // Use fresh projection for clicks (no cache), cached for hover (perf)
-    const projectFn = fresh ? projectInstanceFresh : projectInstance;
 
     for (let i = 0; i < listCandidate.length; i += 1) {
       const idx = listCandidate[i];
-      const screenPos = projectFn(idx, mesh, cam);
+      const screenPos = projectStar(idx, mesh, cam);
       if (!screenPos) {
         continue;
       }
-
       const dx = screenPos.sx - screenX;
       const dy = screenPos.sy - screenY;
       const distSq = dx * dx + dy * dy;
-
       if (distSq < bestDist) {
         bestDist = distSq;
         bestIndex = idx;
@@ -206,25 +121,20 @@ export const useStarInteraction = (
     return bestIndex;
   };
 
-  // RAF-based throttle: at most one hover check per animation frame, capped at ~30fps
+  // ─── Hover (throttled to ~30 fps via RAF) ─────────────────────────
+
   let lastHoverTime = 0;
   let pendingHoverEvent: MouseEvent | null = null;
   let rafId = 0;
 
   const processHover = (event: MouseEvent): void => {
-    const instanceId = findNearestStar(
-      event.clientX,
-      event.clientY,
-      HIT_RADIUS_PX,
-    );
+    const instanceId = findNearestStar(event.clientX, event.clientY);
 
     if (instanceId >= 0) {
       const song = songsStore.listSong[instanceId];
-
       if (song) {
         hoveredInstanceId.value = instanceId;
         galaxyStore.hoveredStarId = song.id;
-
         tooltipVisible.value = true;
         tooltipX.value = event.clientX + 12;
         tooltipY.value = event.clientY + 12;
@@ -242,14 +152,11 @@ export const useStarInteraction = (
     if (!pendingHoverEvent) {
       return;
     }
-
     const now = performance.now();
     if (now - lastHoverTime < THROTTLE_MS) {
-      // Still within throttle window — schedule again on next frame
       rafId = requestAnimationFrame(flushPendingHover);
       return;
     }
-
     lastHoverTime = now;
     const event = pendingHoverEvent;
     pendingHoverEvent = null;
@@ -258,31 +165,20 @@ export const useStarInteraction = (
 
   const onMouseMove = (event: MouseEvent): void => {
     pendingHoverEvent = event;
-
     if (rafId === 0) {
       rafId = requestAnimationFrame(flushPendingHover);
     }
   };
 
+  // ─── Click ────────────────────────────────────────────────────────
+
   const onClick = (event: MouseEvent): void => {
-    // Use fresh projections (no cache) and force camera matrix update.
-    // After flyToStar() animation + applyScaleCap(), cached projections
-    // are stale — this is the root cause of the offset bug on repeat clicks.
-    const instanceId = findNearestStar(
-      event.clientX,
-      event.clientY,
-      HIT_RADIUS_PX,
-      true, // fresh = true: force camera matrix update, bypass cache
-    );
+    const instanceId = findNearestStar(event.clientX, event.clientY);
 
     if (instanceId >= 0) {
       const song = songsStore.listSong[instanceId];
-
       if (song) {
-        // Fly camera to the clicked star and zoom in for focus
         galaxyStore.flyToStar(song.id);
-        // Call playAudio directly in the click handler (synchronous)
-        // so the browser's user-gesture context is preserved.
         playAudio(song);
         playerStore.play(song);
       }
