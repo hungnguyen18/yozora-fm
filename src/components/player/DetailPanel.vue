@@ -16,7 +16,7 @@ const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
 
 const song = computed(() => playerStore.currentSong);
-const isOpen = computed(() => song.value !== null);
+const isOpen = computed(() => galaxyStore.selectedSongId !== null && song.value !== null);
 
 // Genre color for glow effects
 const genreColor = computed(() => {
