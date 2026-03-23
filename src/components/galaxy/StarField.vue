@@ -112,6 +112,17 @@ const buildMesh = () => {
   listBaseColor.value = baseColors;
   listStarWorldPosition.value = worldPositions;
 
+  // Populate galaxyStore.listStarPosition so flyToStar() can find targets
+  const listStarPos = [];
+  for (let i = 0; i < count; i += 1) {
+    listStarPos.push({
+      songId: listSong[i].id,
+      x: worldPositions[i].x,
+      y: worldPositions[i].y,
+    });
+  }
+  galaxyStore.listStarPosition = listStarPos;
+
   // Remove old mesh from scene if exists
   if (instancedMesh.value && scene.value) {
     scene.value.remove(instancedMesh.value);
