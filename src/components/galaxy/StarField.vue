@@ -578,9 +578,15 @@ onBeforeRender(({ delta }) => {
   }
 
   // Apply star scale cap only when zoom crosses a significant threshold
-  // to avoid recalculating all 9111 instances during smooth zoom animations
+  // and not during flyToStar animation (avoid 18+ fires of 9111 matrix ops)
   const currentZoom = galaxyStore.zoomLevel;
-  if (Math.abs(currentZoom - lastAppliedZoom) >= ZOOM_CAP_THRESHOLD || lastAppliedZoom < 0) {
+  const isAnimating = galaxyStore.isTrailActive;
+  if (!isAnimating && (Math.abs(currentZoom - lastAppliedZoom) >= ZOOM_CAP_THRESHOLD || lastAppliedZoom < 0)) {
+    applyScaleCap(mesh, currentZoom);
+    lastAppliedZoom = currentZoom;
+  }
+  // Force one scale cap update when flyToStar animation ends (zoom changed during it)
+  if (!isAnimating && lastAppliedZoom >= 0 && Math.abs(currentZoom - lastAppliedZoom) > 0.01) {
     applyScaleCap(mesh, currentZoom);
     lastAppliedZoom = currentZoom;
   }
@@ -610,8 +616,11 @@ onBeforeRender(({ delta }) => {
     }
   }
 
-  // Fade pass: only iterate stars that are currently brightened by the trail
-  for (const i of activeTrailStars) {
+  // Fade pass: snapshot the set to avoid mutation during iteration
+  const trailSnapshot = Array.from(activeTrailStars);
+  for (let k = 0; k < trailSnapshot.length; k += 1) {
+    const i = trailSnapshot[k];
+
     // Skip the active (playing) star — preserve its white highlight
     if (i === previousActiveInstanceId) {
       activeTrailStars.delete(i);
