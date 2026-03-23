@@ -13,6 +13,7 @@ import CameraController from './CameraController.vue';
 import ConstellationLines from './ConstellationLines.vue';
 import Nebula from './Nebula.vue';
 import ParticleDust from './ParticleDust.vue';
+import RippleEffect from './RippleEffect.vue';
 import StarField from './StarField.vue';
 
 const galaxyStore = useGalaxyStore();
@@ -147,6 +148,9 @@ const onTresReady = (ctx: TresContext) => {
         :hovered-instance-id="hoveredInstanceId"
         :camera="activeCamera"
       />
+
+      <!-- Ripple rings: expanding concentric rings around the currently playing star -->
+      <RippleEffect />
 
       <!-- Constellation lines: connects stars of the same artist, revealed on hover -->
       <ConstellationLines />
