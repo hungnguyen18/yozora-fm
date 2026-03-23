@@ -179,7 +179,10 @@ export const useGalaxyStore = defineStore("galaxy", {
       const startPanX = this.panX;
       const startPanY = this.panY;
       const startZoom = this.zoomLevel;
-      const TARGET_ZOOM = Math.max(5, startZoom);
+      // Zoom closer for stars near the center (small radius = newer era)
+      const starRadius = Math.sqrt(target.x * target.x + target.y * target.y);
+      const baseTargetZoom = starRadius < 100 ? 12 : starRadius < 250 ? 8 : 5;
+      const TARGET_ZOOM = Math.max(baseTargetZoom, startZoom);
 
       // Offset the pan target so the star centers in the visible area
       // (viewport minus the 520px detail panel on the right).

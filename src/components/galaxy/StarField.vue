@@ -397,8 +397,8 @@ const { onBeforeRender } = useLoop();
 
 // Cap star visual size at high zoom to prevent white-blob effect.
 // At zoom > ZOOM_CAP_START, scales are reduced so stars stay readable.
-const ZOOM_CAP_START = 10;
-const MAX_SCREEN_STAR_SIZE = 8.0; // maximum world-space scale allowed
+const ZOOM_CAP_START = 15;
+const MAX_SCREEN_STAR_SIZE = 12.0; // maximum world-space scale allowed
 const ZOOM_CAP_THRESHOLD = 0.5; // only recalculate when zoom changes by this much
 const scaleCapHelper = new THREE.Matrix4();
 const scaleCapPos = new THREE.Vector3();
@@ -411,10 +411,10 @@ const applyScaleCap = (mesh: THREE.InstancedMesh, zoom: number) => {
   if (baseScales.length === 0) { return; }
 
   const count = mesh.count;
-  // Scale factor: above ZOOM_CAP_START, shrink with square root curve
-  // (much gentler than linear — stars stay visible at high zoom)
+  // Scale factor: above ZOOM_CAP_START, shrink with cube root curve
+  // (very gentle — stars remain large even at extreme zoom)
   const capFactor = zoom > ZOOM_CAP_START
-    ? Math.sqrt(ZOOM_CAP_START / zoom)
+    ? Math.cbrt(ZOOM_CAP_START / zoom)
     : 1;
 
   for (let i = 0; i < count; i += 1) {

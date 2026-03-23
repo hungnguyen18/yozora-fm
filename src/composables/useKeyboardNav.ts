@@ -6,7 +6,7 @@ const PAN_STEP = 20;
 const ZOOM_FACTOR_IN = 1.15;
 const ZOOM_FACTOR_OUT = 0.85;
 const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 20;
+const MAX_ZOOM = 120;
 
 const isInputElement = (target: EventTarget | null): boolean => {
   if (!target || !(target instanceof HTMLElement)) {

@@ -24,7 +24,7 @@ const { enableHover, particleCount } = useLOD();
 const starSpatialIndex = useStarSpatialIndex();
 
 const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 50;
+const MAX_ZOOM = 120;
 
 // Camera state shared with CameraController via props
 const INITIAL_ZOOM = 3;
@@ -106,7 +106,12 @@ const cursorStyle = computed(() =>
 
 const onWheel = (e: WheelEvent) => {
   e.preventDefault();
-  const factor = e.deltaY > 0 ? 0.9 : 1.1;
+  // Zoom accelerates at close range: faster factor when already zoomed in
+  const baseFactor = e.deltaY > 0 ? 0.88 : 1.12;
+  const accel = zoomLevel.value > 10 ? 1.5 : 1.0;
+  const factor = e.deltaY > 0
+    ? 1 - (1 - baseFactor) * accel
+    : 1 + (baseFactor - 1) * accel;
   zoomLevel.value = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel.value * factor));
   galaxyStore.setZoomLevel(zoomLevel.value);
 };
