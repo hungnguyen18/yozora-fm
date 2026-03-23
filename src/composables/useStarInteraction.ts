@@ -3,7 +3,6 @@ import * as THREE from "three";
 import { useGalaxyStore } from "@/stores/galaxy";
 import { usePlayerStore } from "@/stores/player";
 import { useSongsStore } from "@/stores/songs";
-import { usePlayer } from "@/composables/usePlayer";
 import type { IStarSpatialIndex } from "@/composables/useStarSpatialIndex";
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -64,8 +63,6 @@ export const useStarInteraction = (
   const galaxyStore = useGalaxyStore();
   const playerStore = usePlayerStore();
   const songsStore = useSongsStore();
-  const { play: playAudio } = usePlayer();
-
   const hoveredInstanceId = ref<number | null>(null);
 
   // Tooltip state
@@ -179,7 +176,6 @@ export const useStarInteraction = (
       const song = songsStore.listSong[instanceId];
       if (song) {
         galaxyStore.flyToStar(song.id);
-        playAudio(song);
         playerStore.play(song);
       }
     }

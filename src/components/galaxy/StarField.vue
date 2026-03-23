@@ -419,7 +419,14 @@ const applyScaleCap = (mesh: THREE.InstancedMesh, zoom: number) => {
 
   for (let i = 0; i < count; i += 1) {
     const baseScale = baseScales[i] ?? 1;
-    const cappedScale = Math.min(baseScale * capFactor, MAX_SCREEN_STAR_SIZE);
+    let cappedScale = Math.min(baseScale * capFactor, MAX_SCREEN_STAR_SIZE);
+
+    // Preserve hover/active scale multipliers
+    if (i === previousHoveredId) {
+      cappedScale *= HOVER_SCALE_MULTIPLIER;
+    } else if (i === previousActiveInstanceId) {
+      cappedScale *= ACTIVE_SCALE_MULTIPLIER;
+    }
 
     mesh.getMatrixAt(i, scaleCapHelper);
     scaleCapHelper.decompose(scaleCapPos, scaleCapQuat, scaleCapScale);
@@ -481,6 +488,14 @@ onBeforeRender(({ delta }) => {
 
   // Fade pass: only iterate stars that are currently brightened by the trail
   for (const i of activeTrailStars) {
+    // Skip the active (playing) star — preserve its white highlight
+    if (i === previousActiveInstanceId) {
+      activeTrailStars.delete(i);
+      trailPassTime[i] = -1;
+      trailBrightness[i] = 0;
+      continue;
+    }
+
     trailPassTime[i] += delta;
     const fade = 1 - Math.min(trailPassTime[i] / TRAIL_FADE_DURATION, 1);
     trailBrightness[i] = fade;
