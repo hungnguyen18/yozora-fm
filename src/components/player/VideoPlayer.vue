@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { Maximize, Minimize, Pause, Play, Volume2, Loader2 } from 'lucide-vue-next';
 import { usePlayer } from '@/composables/usePlayer';
+import { usePlayerStore } from '@/stores/player';
 import type { ISong } from '@/types';
 
 type TVideoPlayerProps = {
@@ -14,6 +15,7 @@ const props = withDefaults(defineProps<TVideoPlayerProps>(), {
   song: null,
 });
 
+const playerStore = usePlayerStore();
 const { videoA, videoB, activeVideo, isLoading, pause, resume, setVolume, setupProgressTracking, getVideoUrl } =
   usePlayer();
 
@@ -63,10 +65,10 @@ onUnmounted(() => {
 const isControlsVisible = ref(false);
 const hideControlsTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
-// Local UI state mirroring store for responsiveness
-const isPlaying = ref(false);
-const volume = ref(0.8);
-const progress = ref(0);
+// Local UI state — initialized from store so remount reflects current state
+const isPlaying = ref(playerStore.isPlaying);
+const volume = ref(playerStore.volume);
+const progress = ref(playerStore.progress);
 const isFullscreen = ref(false);
 
 const containerRef = ref<HTMLDivElement | null>(null);
