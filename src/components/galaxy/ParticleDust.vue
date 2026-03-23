@@ -1,24 +1,40 @@
 <script setup lang="ts">
-// ParticleDust — 3000 floating particles scattered across the scene.
+// ParticleDust — floating particles scattered across the scene.
 // Creates depth and atmosphere without distracting from the star field.
+// Particle count is driven by the LOD tier from the parent (GalaxyScene).
 
-import { shallowRef, onMounted, onBeforeUnmount } from 'vue';
+import { shallowRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useLoop } from '@tresjs/core';
 import * as THREE from 'three';
 
-const PARTICLE_COUNT = 3000;
+const props = defineProps<{
+  particleCount?: number;
+}>();
+
+// Default count used before any LOD prop is received
+const DEFAULT_PARTICLE_COUNT = 3000;
 
 const pointsRef = shallowRef<THREE.Points | null>(null);
 
 // Per-particle drift velocity stored as flat Float32Array: [vx0, vy0, vx1, vy1, ...]
-let listVelocity: Float32Array;
+let listVelocity: Float32Array = new Float32Array(0);
+// Track the active count so the render loop uses the right bound
+let activeCount = 0;
 
-onMounted(() => {
+const buildPoints = (count: number): void => {
+  // Dispose previous geometry/material before recreating
+  if (pointsRef.value) {
+    pointsRef.value.geometry.dispose();
+    (pointsRef.value.material as THREE.PointsMaterial).dispose();
+    pointsRef.value = null;
+  }
+
+  activeCount = count;
   const geometry = new THREE.BufferGeometry();
-  const listPosition = new Float32Array(PARTICLE_COUNT * 3);
-  listVelocity = new Float32Array(PARTICLE_COUNT * 2);
+  const listPosition = new Float32Array(count * 3);
+  listVelocity = new Float32Array(count * 2);
 
-  for (let i = 0; i < PARTICLE_COUNT; i += 1) {
+  for (let i = 0; i < count; i += 1) {
     const idx = i * 3;
     listPosition[idx]     = (Math.random() - 0.5) * 1200; // x ∈ [-600, 600]
     listPosition[idx + 1] = (Math.random() - 0.5) * 1200; // y ∈ [-600, 600]
@@ -43,6 +59,10 @@ onMounted(() => {
   });
 
   pointsRef.value = new THREE.Points(geometry, material);
+};
+
+onMounted(() => {
+  buildPoints(props.particleCount ?? DEFAULT_PARTICLE_COUNT);
 });
 
 onBeforeUnmount(() => {
@@ -50,6 +70,15 @@ onBeforeUnmount(() => {
   pointsRef.value.geometry.dispose();
   (pointsRef.value.material as THREE.PointsMaterial).dispose();
 });
+
+// Rebuild geometry when the LOD-driven count changes
+watch(
+  () => props.particleCount,
+  (newCount) => {
+    if (newCount === undefined) { return; }
+    buildPoints(newCount);
+  },
+);
 
 const { onBeforeRender } = useLoop();
 
@@ -59,7 +88,7 @@ onBeforeRender(() => {
   const posAttr = pointsRef.value.geometry.getAttribute('position') as THREE.BufferAttribute;
   const listPosition = posAttr.array as Float32Array;
 
-  for (let i = 0; i < PARTICLE_COUNT; i += 1) {
+  for (let i = 0; i < activeCount; i += 1) {
     const idx = i * 3;
     const velIdx = i * 2;
 

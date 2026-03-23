@@ -8,12 +8,14 @@ import { TresCanvas } from '@tresjs/core';
 import type { TresContext } from '@tresjs/core';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useStarInteraction } from '@/composables/useStarInteraction';
+import { useLOD } from '@/composables/useLOD';
 import CameraController from './CameraController.vue';
 import Nebula from './Nebula.vue';
 import ParticleDust from './ParticleDust.vue';
 import StarField from './StarField.vue';
 
 const galaxyStore = useGalaxyStore();
+const { enableHover, particleCount } = useLOD();
 
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 20;
@@ -40,7 +42,7 @@ const viewHalfHeight = computed(() => window.innerHeight / 2);
 const isDragging = ref(false);
 const dragStart = ref({ x: 0, y: 0 });
 
-// Ref to the StarField component to access its exposed instancedMesh
+// Ref to the StarField component to access its exposed instancedMesh and labels
 const starFieldRef = ref<InstanceType<typeof StarField> | null>(null);
 
 // Active camera ref populated when TresCanvas is ready
@@ -60,6 +62,9 @@ const {
   onClick,
 } = useStarInteraction(meshProxy, cameraProxy);
 
+// Star labels computed inside StarField and accessed via template ref
+const visibleLabels = computed(() => starFieldRef.value?.visibleLabels ?? []);
+
 const onWheel = (e: WheelEvent) => {
   e.preventDefault();
   const factor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -74,8 +79,10 @@ const onPointerDown = (e: PointerEvent) => {
 };
 
 const onPointerMove = (e: PointerEvent) => {
-  // Always run hover detection regardless of drag state
-  onMouseMove(e);
+  // Only run hover detection when LOD tier allows it
+  if (enableHover.value) {
+    onMouseMove(e);
+  }
 
   if (!isDragging.value) { return; }
   const dx = e.clientX - dragStart.value.x;
@@ -131,12 +138,13 @@ const onTresReady = (ctx: TresContext) => {
 
       <!-- Background atmosphere (renders behind stars) -->
       <Nebula />
-      <ParticleDust />
+      <ParticleDust :particle-count="particleCount" />
 
       <!-- Star field: all songs rendered as a single InstancedMesh -->
       <StarField
         ref="starFieldRef"
         :hovered-instance-id="hoveredInstanceId"
+        :camera="activeCamera"
       />
     </TresCanvas>
 
@@ -147,6 +155,16 @@ const onTresReady = (ctx: TresContext) => {
       :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
     >
       {{ tooltipText }}
+    </div>
+
+    <!-- HTML star label overlays: rendered at mid/close LOD tiers -->
+    <div
+      v-for="label in visibleLabels"
+      :key="label.songId"
+      class="star-label"
+      :style="{ left: label.x + 'px', top: label.y + 'px' }"
+    >
+      {{ label.text }}
     </div>
   </div>
 </template>
@@ -176,5 +194,15 @@ const onTresReady = (ctx: TresContext) => {
   padding: 0.25rem 0.625rem;
   white-space: nowrap;
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.star-label {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  font-size: 0.75rem;
+  color: rgba(232, 232, 240, 0.7);
+  transform: translate(6px, -50%);
+  white-space: nowrap;
 }
 </style>
