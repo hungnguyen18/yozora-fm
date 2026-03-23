@@ -110,17 +110,46 @@ export const useStarInteraction = (
     return { wx: _unprojectNear.x, wy: _unprojectNear.y };
   };
 
+  // Project a star without using cache — for click detection where accuracy
+  // is critical (cache can be stale after flyToStar / applyScaleCap).
+  const projectInstanceFresh = (
+    instanceIndex: number,
+    mesh: THREE.InstancedMesh,
+    cam: THREE.Camera,
+  ): { sx: number; sy: number } | null => {
+    mesh.getMatrixAt(instanceIndex, _matrix);
+    _matrix.decompose(_pos, _quat, _scale);
+
+    _projected.copy(_pos).project(cam);
+
+    if (_projected.z > 1) {
+      return null;
+    }
+
+    const sx = (_projected.x * 0.5 + 0.5) * window.innerWidth;
+    const sy = (-_projected.y * 0.5 + 0.5) * window.innerHeight;
+    return { sx, sy };
+  };
+
   // Find the nearest star instance to a screen position (in pixels).
   // Uses the spatial index to only check nearby stars (~20-50) instead of all 9111.
+  // `fresh` = true bypasses the projection cache (use for clicks after camera animation).
   const findNearestStar = (
     screenX: number,
     screenY: number,
     hitRadiusPx: number,
+    fresh = false,
   ): number => {
     const mesh = meshRef.value;
     const cam = camera.value;
     if (!mesh || !cam) {
       return -1;
+    }
+
+    // Force-update camera projection matrix to ensure it matches current state.
+    // After flyToStar() animation + applyScaleCap(), the matrix could be stale.
+    if (fresh && "updateProjectionMatrix" in cam) {
+      (cam as THREE.OrthographicCamera).updateProjectionMatrix();
     }
 
     // Invalidate projection cache when camera has moved
@@ -142,9 +171,12 @@ export const useStarInteraction = (
     let bestDist = hitRadiusPx * hitRadiusPx;
     let bestIndex = -1;
 
+    // Use fresh projection for clicks (no cache), cached for hover (perf)
+    const projectFn = fresh ? projectInstanceFresh : projectInstance;
+
     for (let i = 0; i < listCandidate.length; i += 1) {
       const idx = listCandidate[i];
-      const screenPos = projectInstance(idx, mesh, cam);
+      const screenPos = projectFn(idx, mesh, cam);
       if (!screenPos) {
         continue;
       }
@@ -221,14 +253,14 @@ export const useStarInteraction = (
   };
 
   const onClick = (event: MouseEvent): void => {
-    // Always do a fresh search on click — hover state may be stale
-    // (throttled, or enableHover was false). Invalidate cache to ensure
-    // projections match the current camera position exactly.
-    invalidateCache();
+    // Use fresh projections (no cache) and force camera matrix update.
+    // After flyToStar() animation + applyScaleCap(), cached projections
+    // are stale — this is the root cause of the offset bug on repeat clicks.
     const instanceId = findNearestStar(
       event.clientX,
       event.clientY,
       HIT_RADIUS_PX,
+      true, // fresh = true: force camera matrix update, bypass cache
     );
 
     if (instanceId >= 0) {
