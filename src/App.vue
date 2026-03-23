@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Yozora.fm — root application shell
-import { ref, computed, onMounted, watchEffect } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import GalaxyScene from '@/components/galaxy/GalaxyScene.vue';
 import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';

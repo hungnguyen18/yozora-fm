@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { useGalaxyStore } from "@/stores/galaxy";
 import { usePlayerStore } from "@/stores/player";
 import { useSongsStore } from "@/stores/songs";
+import { usePlayer } from "@/composables/usePlayer";
 import type { IStarSpatialIndex } from "@/composables/useStarSpatialIndex";
 
 // Maximum screen-space distance (pixels) to count as a star click/hover.
@@ -24,6 +25,7 @@ export const useStarInteraction = (
   const galaxyStore = useGalaxyStore();
   const playerStore = usePlayerStore();
   const songsStore = useSongsStore();
+  const { play: playAudio } = usePlayer();
 
   const hoveredInstanceId = ref<number | null>(null);
 
@@ -219,6 +221,10 @@ export const useStarInteraction = (
 
       if (song) {
         galaxyStore.selectedSongId = song.id;
+        // Call playAudio directly in the click handler (synchronous)
+        // so the browser's user-gesture context is preserved.
+        // playerStore.play() only updates state; playAudio() triggers <video>.play().
+        playAudio(song);
         playerStore.play(song);
       }
     }

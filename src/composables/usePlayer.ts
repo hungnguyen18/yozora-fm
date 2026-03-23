@@ -22,6 +22,8 @@ const videoContainerRect: Ref<TVideoContainerRect | null> = ref(null);
 let watcherInstalled = false;
 // Pending song to play once the video element becomes available
 let pendingSong: ISong | null = null;
+// Flag to skip the watcher when play() was called directly from a click handler
+let skipNextWatcherPlay = false;
 
 export const usePlayer = () => {
   const playerStore = usePlayerStore();
@@ -59,6 +61,7 @@ export const usePlayer = () => {
     }
 
     pendingSong = null;
+    skipNextWatcherPlay = true;
     isLoading.value = true;
     current.src = url;
     current.volume = playerStore.volume;
@@ -191,11 +194,16 @@ export const usePlayer = () => {
       }
     });
 
-    // React to store-driven song changes (e.g. user clicks a star)
+    // React to store-driven song changes (e.g. auto-play next).
+    // Skipped when play() was already called directly from click handler.
     watch(
       () => playerStore.currentSong,
       (newSong, oldSong) => {
         if (!newSong) {
+          return;
+        }
+        if (skipNextWatcherPlay) {
+          skipNextWatcherPlay = false;
           return;
         }
         if (oldSong) {

@@ -301,14 +301,6 @@ const timeDisplay = computed(() => {
   cursor: grabbing;
 }
 
-.pip-video-hidden {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* Main body row */
 .pip-body {
   display: flex;
@@ -504,6 +496,7 @@ const timeDisplay = computed(() => {
   border-radius: 8px;
   padding: 12px 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  margin-bottom: 4px;
 }
 
 .pip-volume-input {
