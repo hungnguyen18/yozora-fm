@@ -79,10 +79,6 @@ const onPointerUp = () => {
 
       <TresAmbientLight :intensity="0.5" />
 
-      <!-- Background atmosphere: rendered before stars so they appear behind -->
-      <Nebula />
-      <ParticleDust />
-
       <!-- Star field: all songs rendered as a single InstancedMesh -->
       <StarField />
     </TresCanvas>
