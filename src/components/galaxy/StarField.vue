@@ -5,10 +5,12 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import * as THREE from 'three';
 import { useSongsStore } from '@/stores/songs';
+import { usePlayerStore } from '@/stores/player';
 import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
 import { useLOD } from '@/composables/useLOD';
 
 const songsStore = useSongsStore();
+const playerStore = usePlayerStore();
 const { computeBuffers } = useGalaxyLayout();
 const { showLabels, labelVoteThreshold } = useLOD();
 
@@ -82,9 +84,23 @@ const buildMesh = () => {
   mesh.instanceMatrix.needsUpdate = true;
   mesh.instanceColor.needsUpdate = true;
 
+  // Cache original per-instance colors for active-star restoration
+  const baseColors: { r: number; g: number; b: number }[] = [];
+  for (let i = 0; i < count; i += 1) {
+    baseColors.push({
+      r: colors[i * 3],
+      g: colors[i * 3 + 1],
+      b: colors[i * 3 + 2],
+    });
+  }
+
   listBaseScale.value = baseScales;
+  listBaseColor.value = baseColors;
   listStarWorldPosition.value = worldPositions;
   instancedMesh.value = mesh;
+
+  // Re-apply active star highlight after mesh rebuild
+  previousActiveInstanceId = null;
 };
 
 onMounted(async () => {
@@ -148,6 +164,61 @@ watch(
     }
 
     previousHoveredId = nextId;
+  },
+);
+
+// Active star visual: brighter colour (white) and 1.5x scale when a song is playing.
+// Distinct from hover — hover uses HOVER_SCALE_MULTIPLIER; active is always 1.5x base.
+const ACTIVE_SCALE_MULTIPLIER = 1.5;
+const activeColor = new THREE.Color(1, 1, 1); // bright white
+const activeColorHelper = new THREE.Color();
+let previousActiveInstanceId: number | null = null;
+
+// Original colors buffer saved at build time so we can restore them
+const listBaseColor = ref<{ r: number; g: number; b: number }[]>([]);
+
+const setInstanceColor = (
+  mesh: THREE.InstancedMesh,
+  instanceId: number,
+  r: number,
+  g: number,
+  b: number,
+): void => {
+  activeColorHelper.setRGB(r, g, b);
+  mesh.setColorAt(instanceId, activeColorHelper);
+  if (mesh.instanceColor) { mesh.instanceColor.needsUpdate = true; }
+};
+
+watch(
+  () => playerStore.currentSong,
+  (song, _prevSong) => {
+    const mesh = instancedMesh.value;
+    if (!mesh) { return; }
+
+    // Restore previous active star to its original colour and base scale
+    if (previousActiveInstanceId !== null) {
+      const prevId = previousActiveInstanceId;
+      const base = listBaseColor.value[prevId];
+      if (base) {
+        setInstanceColor(mesh, prevId, base.r, base.g, base.b);
+      }
+      const baseScale = listBaseScale.value[prevId] ?? 1;
+      setInstanceScale(mesh, prevId, baseScale);
+      previousActiveInstanceId = null;
+    }
+
+    if (!song) { return; }
+
+    // Find instance index matching the playing song
+    const listSong = songsStore.listSong;
+    const instanceId = listSong.findIndex((s) => s.id === song.id);
+    if (instanceId === -1) { return; }
+
+    // Brighten to white and scale up
+    setInstanceColor(mesh, instanceId, activeColor.r, activeColor.g, activeColor.b);
+    const baseScale = listBaseScale.value[instanceId] ?? 1;
+    setInstanceScale(mesh, instanceId, baseScale * ACTIVE_SCALE_MULTIPLIER);
+    previousActiveInstanceId = instanceId;
   },
 );
 
