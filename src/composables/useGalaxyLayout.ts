@@ -35,8 +35,8 @@ const hexToColor = (hex: string): THREE.Color => {
 
 // Logarithmic size mapping: vote_count → [1.0, 4.0]
 const computeStarSize = (voteCount: number): number => {
-  const MIN_SIZE = 8.0;
-  const MAX_SIZE = 25.0;
+  const MIN_SIZE = 4.0;
+  const MAX_SIZE = 15.0;
   // log2(1) = 0, treat vote_count of 0 as 1 to avoid log(0)
   const clamped = Math.max(1, voteCount);
   // Scale: log2 range from 0 to ~10 maps nicely to [1, 4]

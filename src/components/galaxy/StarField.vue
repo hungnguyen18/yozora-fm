@@ -2,9 +2,9 @@
 // StarField — renders all songs as a single InstancedMesh in the TresJS scene.
 // Must be placed inside a TresCanvas (child of GalaxyScene).
 
-import { ref, shallowRef, triggerRef, computed, watch, onMounted, markRaw } from 'vue';
+import { ref, shallowRef, triggerRef, computed, watch, onMounted, onUnmounted, markRaw } from 'vue';
 import * as THREE from 'three';
-import { useLoop } from '@tresjs/core';
+import { useLoop, useTresContext } from '@tresjs/core';
 import { useSongsStore } from '@/stores/songs';
 import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
@@ -16,6 +16,7 @@ const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
 const { computeBuffers } = useGalaxyLayout();
 const { showLabels, labelVoteThreshold } = useLOD();
+const { scene } = useTresContext();
 
 const instancedMesh = shallowRef<THREE.InstancedMesh | null>(null);
 
@@ -57,11 +58,12 @@ const buildMesh = () => {
   const geometry = new THREE.PlaneGeometry(1, 1);
   const material = new THREE.MeshBasicMaterial({
     map: createGlowTexture(),
-    vertexColors: true,
     transparent: true,
+    opacity: 1.0,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
+    color: 0xffffff,
   });
 
   const mesh = new THREE.InstancedMesh(geometry, material, count);
@@ -100,8 +102,21 @@ const buildMesh = () => {
   listBaseScale.value = baseScales;
   listBaseColor.value = baseColors;
   listStarWorldPosition.value = worldPositions;
+
+  // Remove old mesh from scene if exists
+  if (instancedMesh.value && scene.value) {
+    scene.value.remove(instancedMesh.value);
+  }
+
   instancedMesh.value = markRaw(mesh);
   triggerRef(instancedMesh);
+
+  // Add mesh directly to Three.js scene (bypasses <primitive> issues)
+  if (scene.value) {
+    scene.value.add(mesh);
+  }
+
+  console.log(`StarField: added ${count} stars to scene`);
 
   // Re-apply active star highlight after mesh rebuild
   previousActiveInstanceId = null;
@@ -112,6 +127,12 @@ onMounted(async () => {
     await songsStore.fetchSongs();
   }
   buildMesh();
+});
+
+onUnmounted(() => {
+  if (instancedMesh.value && scene.value) {
+    scene.value.remove(instancedMesh.value);
+  }
 });
 
 // Rebuild mesh if songs are loaded after mount (e.g. slow network)
@@ -391,8 +412,6 @@ defineExpose({ instancedMesh, visibleLabels });
 </script>
 
 <template>
-  <primitive
-    v-if="instancedMesh"
-    :object="instancedMesh"
-  />
+  <!-- Mesh added directly to scene via useTresContext in buildMesh() -->
+  <slot />
 </template>
