@@ -183,10 +183,12 @@ export const useGalaxyStore = defineStore("galaxy", {
 
       // Offset the pan target so the star centers in the visible area
       // (viewport minus the 520px detail panel on the right).
+      // Camera center must shift RIGHT so the star appears in the LEFT
+      // portion of the viewport (the area not covered by the panel).
       // In orthographic projection: world_offset = screen_pixels / zoom.
       const PANEL_WIDTH_PX = 520;
       const panOffsetX = PANEL_WIDTH_PX / 2 / TARGET_ZOOM;
-      const targetX = target.x - panOffsetX;
+      const targetX = target.x + panOffsetX;
       const targetY = target.y;
 
       const animateTrail = () => {

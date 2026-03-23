@@ -7,9 +7,7 @@ import { usePlayer } from "@/composables/usePlayer";
 import type { IStarSpatialIndex } from "@/composables/useStarSpatialIndex";
 
 // Maximum screen-space distance (pixels) to count as a star click/hover.
-// Separate thresholds: hover is generous (easy tooltip), click is tighter (precision).
-const HOVER_RADIUS_PX = 48;
-const CLICK_RADIUS_PX = 32;
+const HIT_RADIUS_PX = 40;
 
 // World-space search radius used to query the spatial grid.
 // This is dynamically scaled by zoom so fewer stars are checked at far zoom.
@@ -173,7 +171,7 @@ export const useStarInteraction = (
     const instanceId = findNearestStar(
       event.clientX,
       event.clientY,
-      HOVER_RADIUS_PX,
+      HIT_RADIUS_PX,
     );
 
     if (instanceId >= 0) {
@@ -223,11 +221,15 @@ export const useStarInteraction = (
   };
 
   const onClick = (event: MouseEvent): void => {
-    const instanceId = findNearestStar(
-      event.clientX,
-      event.clientY,
-      CLICK_RADIUS_PX,
-    );
+    // If a star is already hovered, use it directly (most accurate —
+    // hover detection already found the closest star to the cursor).
+    let instanceId = hoveredInstanceId.value;
+
+    if (instanceId === null || instanceId < 0) {
+      // Force-invalidate cache so click uses fresh projections
+      invalidateCache();
+      instanceId = findNearestStar(event.clientX, event.clientY, HIT_RADIUS_PX);
+    }
 
     if (instanceId >= 0) {
       const song = songsStore.listSong[instanceId];
