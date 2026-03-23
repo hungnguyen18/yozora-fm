@@ -7,8 +7,9 @@ import { usePlayer } from "@/composables/usePlayer";
 import type { IStarSpatialIndex } from "@/composables/useStarSpatialIndex";
 
 // Maximum screen-space distance (pixels) to count as a star click/hover.
-// Large radius so users can click "near" a star without precision targeting.
-const HIT_RADIUS_PX = 48;
+// Separate thresholds: hover is generous (easy tooltip), click is tighter (precision).
+const HOVER_RADIUS_PX = 48;
+const CLICK_RADIUS_PX = 32;
 
 // World-space search radius used to query the spatial grid.
 // This is dynamically scaled by zoom so fewer stars are checked at far zoom.
@@ -113,7 +114,11 @@ export const useStarInteraction = (
 
   // Find the nearest star instance to a screen position (in pixels).
   // Uses the spatial index to only check nearby stars (~20-50) instead of all 9111.
-  const findNearestStar = (screenX: number, screenY: number): number => {
+  const findNearestStar = (
+    screenX: number,
+    screenY: number,
+    hitRadiusPx: number,
+  ): number => {
     const mesh = meshRef.value;
     const cam = camera.value;
     if (!mesh || !cam) {
@@ -136,7 +141,7 @@ export const useStarInteraction = (
     // Query the spatial grid for candidate star indices
     const listCandidate = spatialIndex.queryNear(wx, wy, searchRadius);
 
-    let bestDist = HIT_RADIUS_PX * HIT_RADIUS_PX;
+    let bestDist = hitRadiusPx * hitRadiusPx;
     let bestIndex = -1;
 
     for (let i = 0; i < listCandidate.length; i += 1) {
@@ -165,7 +170,11 @@ export const useStarInteraction = (
   let rafId = 0;
 
   const processHover = (event: MouseEvent): void => {
-    const instanceId = findNearestStar(event.clientX, event.clientY);
+    const instanceId = findNearestStar(
+      event.clientX,
+      event.clientY,
+      HOVER_RADIUS_PX,
+    );
 
     if (instanceId >= 0) {
       const song = songsStore.listSong[instanceId];
@@ -214,16 +223,20 @@ export const useStarInteraction = (
   };
 
   const onClick = (event: MouseEvent): void => {
-    const instanceId = findNearestStar(event.clientX, event.clientY);
+    const instanceId = findNearestStar(
+      event.clientX,
+      event.clientY,
+      CLICK_RADIUS_PX,
+    );
 
     if (instanceId >= 0) {
       const song = songsStore.listSong[instanceId];
 
       if (song) {
-        galaxyStore.selectedSongId = song.id;
+        // Fly camera to the clicked star and zoom in for focus
+        galaxyStore.flyToStar(song.id);
         // Call playAudio directly in the click handler (synchronous)
         // so the browser's user-gesture context is preserved.
-        // playerStore.play() only updates state; playAudio() triggers <video>.play().
         playAudio(song);
         playerStore.play(song);
       }

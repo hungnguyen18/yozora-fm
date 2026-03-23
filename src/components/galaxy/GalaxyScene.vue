@@ -31,7 +31,7 @@ const zoomLevel = ref(3);
 const panX = ref(galaxyStore.panX);
 const panY = ref(galaxyStore.panY);
 
-// Sync store pan → local refs (minimap click-to-jump writes to store)
+// Sync store pan + zoom → local refs (minimap click-to-jump and flyToStar write to store)
 watch(
   () => [galaxyStore.panX, galaxyStore.panY] as [number, number],
   ([storeX, storeY]) => {
@@ -40,14 +40,24 @@ watch(
   },
 );
 
+watch(
+  () => galaxyStore.zoomLevel,
+  (storeZoom) => {
+    zoomLevel.value = storeZoom;
+  },
+);
+
 // Reactive window dimensions for responsive orthographic frustum
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 const viewHalfWidth = computed(() => windowWidth.value / 2);
 const viewHalfHeight = computed(() => windowHeight.value / 2);
 
-// Pan drag tracking
+// Pan drag tracking — only counts as drag after moving > DRAG_THRESHOLD pixels
 const isDragging = ref(false);
+const hasDragged = ref(false);
+const DRAG_THRESHOLD = 4;
 const dragStart = ref({ x: 0, y: 0 });
+const pointerDownPos = ref({ x: 0, y: 0 });
 
 // Ref to the StarField component to access its exposed instancedMesh and labels
 const starFieldRef = ref<InstanceType<typeof StarField> | null>(null);
@@ -96,7 +106,9 @@ const onWheel = (e: WheelEvent) => {
 
 const onPointerDown = (e: PointerEvent) => {
   isDragging.value = true;
+  hasDragged.value = false;
   dragStart.value = { x: e.clientX, y: e.clientY };
+  pointerDownPos.value = { x: e.clientX, y: e.clientY };
   (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 };
 
@@ -107,9 +119,19 @@ const onPointerMove = (e: PointerEvent) => {
   }
 
   if (!isDragging.value) { return; }
+
+  // Check if movement exceeds threshold before starting pan
+  if (!hasDragged.value) {
+    const totalDx = e.clientX - pointerDownPos.value.x;
+    const totalDy = e.clientY - pointerDownPos.value.y;
+    if (totalDx * totalDx + totalDy * totalDy < DRAG_THRESHOLD * DRAG_THRESHOLD) {
+      return;
+    }
+    hasDragged.value = true;
+  }
+
   const dx = e.clientX - dragStart.value.x;
   const dy = e.clientY - dragStart.value.y;
-  // Invert dx/dy so dragging right moves the view right (pan follows pointer)
   const panScale = 1 / zoomLevel.value;
   panX.value -= dx * panScale;
   panY.value += dy * panScale;
@@ -121,9 +143,9 @@ const onPointerUp = () => {
   isDragging.value = false;
 };
 
-// Forward click to star interaction handler; ignore if a drag is in progress
+// Forward click to star interaction handler; ignore if user actually dragged
 const onCanvasClick = (e: MouseEvent) => {
-  if (isDragging.value) { return; }
+  if (hasDragged.value) { return; }
   onClick(e);
 };
 

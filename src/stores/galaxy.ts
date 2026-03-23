@@ -168,18 +168,19 @@ export const useGalaxyStore = defineStore("galaxy", {
       this.trailProgress = 0;
       this.isTrailActive = true;
 
-      // Animate trailProgress from 0 → 1 over ~1.5 seconds with ease-in-out
       const TRAIL_DURATION_MS = 1500;
       const startTime = performance.now();
 
-      // Smooth ease-in-out cubic for cinematic camera movement
       const easeInOutCubic = (t: number): number => {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       };
 
-      // Animate camera pan smoothly from current position to target
+      // Animate camera pan + zoom smoothly
       const startPanX = this.panX;
       const startPanY = this.panY;
+      const startZoom = this.zoomLevel;
+      // Zoom in to at least 5 for focus (don't zoom out if already closer)
+      const TARGET_ZOOM = Math.max(5, startZoom);
 
       const animateTrail = () => {
         const elapsed = performance.now() - startTime;
@@ -188,17 +189,21 @@ export const useGalaxyStore = defineStore("galaxy", {
 
         this.trailProgress = easedProgress;
 
-        // Smoothly interpolate camera pan position
+        // Smoothly interpolate camera pan and zoom
         this.panX = startPanX + (target.x - startPanX) * easedProgress;
         this.panY = startPanY + (target.y - startPanY) * easedProgress;
+
+        if (startZoom !== TARGET_ZOOM) {
+          const newZoom = startZoom + (TARGET_ZOOM - startZoom) * easedProgress;
+          this.setZoomLevel(newZoom);
+        }
 
         if (linearProgress < 1) {
           requestAnimationFrame(animateTrail);
         } else {
-          // Ensure final position is exact
           this.panX = target.x;
           this.panY = target.y;
-          // Leave isTrailActive true briefly so StarField can finish fading stars back
+          this.setZoomLevel(TARGET_ZOOM);
           setTimeout(() => {
             this.isTrailActive = false;
             this.trailStart = null;
@@ -211,7 +216,6 @@ export const useGalaxyStore = defineStore("galaxy", {
       requestAnimationFrame(animateTrail);
 
       this.selectedSongId = songId;
-      // Camera pan is now animated frame-by-frame above instead of snapping instantly.
     },
 
     setZoomLevel(zoom: number) {
