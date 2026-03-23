@@ -6,6 +6,7 @@ import { ref, computed } from 'vue';
 import { TresCanvas } from '@tresjs/core';
 import { useGalaxyStore } from '@/stores/galaxy';
 import CameraController from './CameraController.vue';
+import StarField from './StarField.vue';
 
 const galaxyStore = useGalaxyStore();
 
@@ -78,11 +79,12 @@ const onPointerUp = () => {
 
       <TresAmbientLight :intensity="0.5" />
 
-      <!-- Placeholder gold sphere to verify the scene renders -->
-      <TresMesh :position="[0, 0, 0]">
-        <TresSphereGeometry :args="[5, 16, 16]" />
-        <TresMeshBasicMaterial color="#F59E0B" />
-      </TresMesh>
+      <!-- Background atmosphere: rendered before stars so they appear behind -->
+      <Nebula />
+      <ParticleDust />
+
+      <!-- Star field: all songs rendered as a single InstancedMesh -->
+      <StarField />
     </TresCanvas>
   </div>
 </template>
