@@ -7,6 +7,7 @@ import PipPlayer from '@/components/player/PipPlayer.vue';
 import EraIndicator from '@/components/navigation/EraIndicator.vue';
 import EraSummary from '@/components/navigation/EraSummary.vue';
 import Minimap from '@/components/navigation/Minimap.vue';
+import SearchBar from '@/components/navigation/SearchBar.vue';
 import AuthButton from '@/components/ui/AuthButton.vue';
 import UserMenu from '@/components/ui/UserMenu.vue';
 import LoadingScreen from '@/components/ui/LoadingScreen.vue';
@@ -54,6 +55,7 @@ onMounted(async () => {
     <GalaxyScene @pointerdown="dismissOnboarding" @wheel="dismissOnboarding" />
     <DetailPanel />
     <PipPlayer />
+    <SearchBar />
     <EraIndicator />
     <EraSummary />
     <Minimap />

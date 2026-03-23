@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { Maximize, Minimize, Pause, Play, Volume2, Video } from 'lucide-vue-next';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import { Maximize, Minimize, Pause, Play, Volume2, Video, Loader2 } from 'lucide-vue-next';
 import { usePlayer } from '@/composables/usePlayer';
 import type { ISong } from '@/types';
 
@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<TVideoPlayerProps>(), {
   song: null,
 });
 
-const { videoA, videoB, activeVideo, pause, resume, setVolume, setupProgressTracking } =
+const { videoA, videoB, activeVideo, isLoading, pause, resume, setVolume, setupProgressTracking } =
   usePlayer();
 
 // Controls visibility state
@@ -31,6 +31,10 @@ const containerRef = ref<HTMLDivElement | null>(null);
 
 const hasVideo = computed(() => {
   return props.song !== null && Boolean(props.song.animethemes_slug);
+});
+
+const coverArtUrl = computed(() => {
+  return props.song?.album_art_url ?? null;
 });
 
 const glowStyle = computed(() => {
@@ -119,20 +123,34 @@ const onVideoPause = (): void => {
   isPlaying.value = false;
 };
 
+const attachVideoListeners = (el: HTMLVideoElement): void => {
+  setupProgressTracking(el);
+  el.addEventListener('timeupdate', onTimeUpdate);
+  el.addEventListener('play', onVideoPlay);
+  el.addEventListener('pause', onVideoPause);
+};
+
 onMounted(() => {
   document.addEventListener('fullscreenchange', onFullscreenChange);
 
   if (videoA.value) {
-    setupProgressTracking(videoA.value);
-    videoA.value.addEventListener('timeupdate', onTimeUpdate);
-    videoA.value.addEventListener('play', onVideoPlay);
-    videoA.value.addEventListener('pause', onVideoPause);
+    attachVideoListeners(videoA.value);
   }
   if (videoB.value) {
-    setupProgressTracking(videoB.value);
-    videoB.value.addEventListener('timeupdate', onTimeUpdate);
-    videoB.value.addEventListener('play', onVideoPlay);
-    videoB.value.addEventListener('pause', onVideoPause);
+    attachVideoListeners(videoB.value);
+  }
+});
+
+// Watch for refs becoming available (they may be null on first mount if v-if delays rendering)
+watch(videoA, (el) => {
+  if (el) {
+    attachVideoListeners(el);
+  }
+});
+
+watch(videoB, (el) => {
+  if (el) {
+    attachVideoListeners(el);
   }
 });
 
@@ -153,19 +171,41 @@ onUnmounted(() => {
     @mousemove="showControls"
     @mouseleave="onMouseLeave"
   >
-    <!-- Fallback when song has no video slug -->
+    <!-- Fallback: cover art when no video slug available -->
     <div
       v-if="!hasVideo"
-      class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/40"
+      class="absolute inset-0 flex flex-col items-center justify-center gap-2"
     >
-      <Video :size="48" class="opacity-40" />
-      <span class="text-sm">No video available</span>
+      <img
+        v-if="coverArtUrl"
+        :src="coverArtUrl"
+        :alt="song?.title ?? 'Album art'"
+        class="absolute inset-0 w-full h-full object-cover opacity-60"
+      />
+      <div
+        v-else
+        class="flex flex-col items-center justify-center gap-2 text-white/40"
+      >
+        <Video :size="48" class="opacity-40" />
+        <span class="text-sm">No video available</span>
+      </div>
     </div>
+
+    <!-- Loading spinner overlay -->
+    <Transition name="fade">
+      <div
+        v-if="isLoading && hasVideo"
+        class="absolute inset-0 flex items-center justify-center z-10 bg-midnight/60"
+      >
+        <Loader2 :size="32" class="text-white/70 animate-spin" />
+      </div>
+    </Transition>
 
     <!-- Video element A -->
     <video
+      v-if="hasVideo"
       ref="videoA"
-      class="absolute inset-0 w-full h-full object-cover"
+      class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
       :class="{ 'opacity-100': activeVideo === 'A', 'opacity-0': activeVideo !== 'A' }"
       preload="auto"
       playsinline
@@ -173,8 +213,9 @@ onUnmounted(() => {
 
     <!-- Video element B -->
     <video
+      v-if="hasVideo"
       ref="videoB"
-      class="absolute inset-0 w-full h-full object-cover"
+      class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
       :class="{ 'opacity-100': activeVideo === 'B', 'opacity-0': activeVideo !== 'B' }"
       preload="auto"
       playsinline
@@ -204,15 +245,12 @@ onUnmounted(() => {
           :aria-label="isPlaying ? 'Pause' : 'Play'"
           @click="togglePlayPause"
         >
-          <!-- Pause icon -->
           <Pause v-if="isPlaying" :size="20" fill="currentColor" />
-          <!-- Play icon -->
           <Play v-else :size="20" fill="currentColor" />
         </button>
 
         <!-- Volume -->
         <div class="flex items-center gap-1.5 group">
-          <!-- Volume icon -->
           <Volume2 :size="16" class="text-white/70 flex-shrink-0" />
           <input
             type="range"
@@ -242,9 +280,7 @@ onUnmounted(() => {
           :aria-label="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
           @click="toggleFullscreen"
         >
-          <!-- Enter fullscreen icon -->
           <Maximize v-if="!isFullscreen" :size="16" />
-          <!-- Exit fullscreen icon -->
           <Minimize v-else :size="16" />
         </button>
       </div>
@@ -283,6 +319,17 @@ onUnmounted(() => {
   50% {
     filter: brightness(1.08);
   }
+}
+
+/* Fade transition for loading spinner */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 /* Slim range slider styling */

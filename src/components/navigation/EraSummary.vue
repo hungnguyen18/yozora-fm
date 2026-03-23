@@ -89,7 +89,7 @@ function navigateToIconic(): void {
 <style scoped>
 .era-summary {
   position: fixed;
-  top: 7.5rem; /* ~120px — sits below the EraIndicator */
+  top: 9.5rem; /* sits below the EraIndicator */
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -103,6 +103,9 @@ function navigateToIconic(): void {
   -webkit-backdrop-filter: blur(14px);
   border-radius: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.15),
+    0 4px 20px rgba(0, 0, 0, 0.3);
   pointer-events: auto;
   user-select: none;
   white-space: nowrap;

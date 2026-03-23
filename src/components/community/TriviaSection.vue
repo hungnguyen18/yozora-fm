@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
+import { Lightbulb, AlertCircle } from 'lucide-vue-next';
 import { useTrivia } from '@/composables/useTrivia';
 import { useAuthStore } from '@/stores/auth';
 
@@ -37,7 +38,7 @@ const handleSubmit = async () => {
   <div class="trivia-section">
     <!-- Header -->
     <div class="trivia-header">
-      <span class="trivia-header__icon" aria-hidden="true">💡</span>
+      <Lightbulb :size="16" class="trivia-header__icon" aria-hidden="true" />
       <h3 class="trivia-header__title">Did you know?</h3>
     </div>
 
@@ -89,8 +90,11 @@ const handleSubmit = async () => {
       No trivia yet. Be the first to share something interesting!
     </p>
 
-    <!-- Error message -->
-    <p v-if="error" class="trivia-error">{{ error }}</p>
+    <!-- Error message — subtle inline notice -->
+    <div v-if="error" class="trivia-error">
+      <AlertCircle :size="14" class="trivia-error__icon" />
+      <span class="trivia-error__text">{{ error }}</span>
+    </div>
 
     <!-- Add trivia form — shown only when authenticated -->
     <div v-if="isAuthenticated" class="trivia-form">
@@ -140,8 +144,8 @@ const handleSubmit = async () => {
 }
 
 .trivia-header__icon {
-  font-size: 1rem;
-  line-height: 1;
+  color: #F59E0B;
+  flex-shrink: 0;
 }
 
 .trivia-header__title {
@@ -268,11 +272,26 @@ const handleSubmit = async () => {
   padding: 8px 0;
 }
 
-/* Error */
+/* Error — subtle muted notice */
 .trivia-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
-  font-size: 0.8125rem;
-  color: #F97316;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background-color: rgba(155, 155, 180, 0.06);
+}
+
+.trivia-error__icon {
+  color: #9B9BB4;
+  flex-shrink: 0;
+}
+
+.trivia-error__text {
+  font-size: 0.75rem;
+  color: #9B9BB4;
+  line-height: 1.4;
 }
 
 /* Form */

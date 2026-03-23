@@ -4,6 +4,7 @@ import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
+import { X, Orbit } from 'lucide-vue-next';
 import VideoPlayer from '@/components/player/VideoPlayer.vue';
 import YouTubeFallback from '@/components/player/YouTubeFallback.vue';
 import ExternalLinkCard from '@/components/player/ExternalLinkCard.vue';
@@ -74,7 +75,7 @@ const onViewConstellation = () => {
         aria-label="Close detail panel"
         @click="close"
       >
-        ✕
+        <X :size="18" />
       </button>
 
       <!-- 1. Video area — AnimeThemes WebM → YouTube fallback → external link card -->
@@ -143,7 +144,8 @@ const onViewConstellation = () => {
 
         <!-- 5. View artist constellation -->
         <button class="constellation-btn" @click="onViewConstellation">
-          View artist constellation
+          <Orbit :size="14" />
+          <span>View artist constellation</span>
         </button>
 
         <!-- 6. Community section -->
@@ -293,18 +295,19 @@ const onViewConstellation = () => {
   align-items: center;
   gap: 6px;
   background: transparent;
-  border: none;
-  padding: 0;
-  font-size: 0.875rem;
-  color: #4F46E5;
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  color: #818CF8;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 0.2s;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s;
 }
 
 .constellation-btn:hover {
-  color: #818CF8;
+  color: #A5B4FC;
+  border-color: rgba(129, 140, 248, 0.5);
+  background-color: rgba(79, 70, 229, 0.08);
 }
 
 /* Auto-play toggle row */
@@ -360,7 +363,7 @@ const onViewConstellation = () => {
 .community-section {
   margin-top: 8px;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>

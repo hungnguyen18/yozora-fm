@@ -19,7 +19,7 @@ const isVisible = computed(() => galaxyStore.lodTier !== 'far' && currentEra.val
 <style scoped>
 .era-indicator {
   position: fixed;
-  top: 1.5rem;
+  top: 3.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -27,12 +27,15 @@ const isVisible = computed(() => galaxyStore.lodTier !== 'far' && currentEra.val
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.75rem 1.5rem;
-  background: rgba(20, 21, 41, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: 0.75rem 1.75rem;
+  background: rgba(20, 21, 41, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-radius: 0.75rem;
   border: 1px solid rgba(79, 70, 229, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.15),
+    0 4px 20px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   user-select: none;
 }

@@ -2,13 +2,16 @@ import { ref, watch } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import type { ISong } from "@/types";
 
+// Singleton refs shared across all components that call usePlayer()
+const videoA = ref<HTMLVideoElement | null>(null);
+const videoB = ref<HTMLVideoElement | null>(null);
+const activeVideo = ref<"A" | "B">("A");
+const isLoading = ref(false);
+
+let watcherInstalled = false;
+
 export const usePlayer = () => {
   const playerStore = usePlayerStore();
-
-  // Two video elements for crossfade
-  const videoA = ref<HTMLVideoElement | null>(null);
-  const videoB = ref<HTMLVideoElement | null>(null);
-  const activeVideo = ref<"A" | "B">("A");
 
   // Build WebM URL from animethemes_slug
   const getVideoUrl = (song: ISong): string | null => {
@@ -35,9 +38,19 @@ export const usePlayer = () => {
 
     const current = getActiveVideoEl();
     if (current) {
+      isLoading.value = true;
       current.src = url;
       current.volume = playerStore.volume;
-      current.play();
+
+      const onCanPlay = (): void => {
+        isLoading.value = false;
+        current.removeEventListener("canplay", onCanPlay);
+      };
+      current.addEventListener("canplay", onCanPlay);
+
+      current.play().catch(() => {
+        isLoading.value = false;
+      });
     }
 
     playerStore.isPlaying = true;
@@ -54,9 +67,19 @@ export const usePlayer = () => {
     const incoming = getInactiveVideoEl();
 
     if (incoming) {
+      isLoading.value = true;
       incoming.src = url;
       incoming.volume = 0;
-      incoming.play();
+
+      const onCanPlay = (): void => {
+        isLoading.value = false;
+        incoming.removeEventListener("canplay", onCanPlay);
+      };
+      incoming.addEventListener("canplay", onCanPlay);
+
+      incoming.play().catch(() => {
+        isLoading.value = false;
+      });
     }
 
     const FADE_DURATION = 2000;
@@ -127,8 +150,6 @@ export const usePlayer = () => {
 
     video.addEventListener("ended", () => {
       if (playerStore.autoPlay) {
-        // next() resolves the nearest era song and triggers crossfade via the
-        // currentSong watcher above.
         playerStore.next();
       } else {
         playerStore.isPlaying = false;
@@ -137,41 +158,47 @@ export const usePlayer = () => {
     });
   };
 
-  // React to store-driven song changes (e.g. user clicks a star)
-  watch(
-    () => playerStore.currentSong,
-    (newSong, oldSong) => {
-      if (!newSong) {
-        return;
-      }
-      if (oldSong) {
-        crossfadeTo(newSong);
-      } else {
-        play(newSong);
-      }
-    },
-  );
+  // Install watchers only once (singleton pattern)
+  if (!watcherInstalled) {
+    watcherInstalled = true;
 
-  // Mirror store isPlaying changes back to the DOM (e.g. external pause calls)
-  watch(
-    () => playerStore.isPlaying,
-    (playing) => {
-      const current = getActiveVideoEl();
-      if (!current || !current.src) {
-        return;
-      }
-      if (playing) {
-        current.play();
-      } else {
-        current.pause();
-      }
-    },
-  );
+    // React to store-driven song changes (e.g. user clicks a star)
+    watch(
+      () => playerStore.currentSong,
+      (newSong, oldSong) => {
+        if (!newSong) {
+          return;
+        }
+        if (oldSong) {
+          crossfadeTo(newSong);
+        } else {
+          play(newSong);
+        }
+      },
+    );
+
+    // Mirror store isPlaying changes back to the DOM (e.g. external pause calls)
+    watch(
+      () => playerStore.isPlaying,
+      (playing) => {
+        const current = getActiveVideoEl();
+        if (!current || !current.src) {
+          return;
+        }
+        if (playing) {
+          current.play();
+        } else {
+          current.pause();
+        }
+      },
+    );
+  }
 
   return {
     videoA,
     videoB,
     activeVideo,
+    isLoading,
     play,
     crossfadeTo,
     pause,

@@ -8,7 +8,7 @@ import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
 
 const playerStore = usePlayerStore();
-const { getVideoUrl } = usePlayer();
+const { videoA, videoB, activeVideo, getVideoUrl } = usePlayer();
 
 const song = computed(() => playerStore.currentSong);
 const isVisible = computed(
@@ -35,24 +35,9 @@ const glowStyle = computed(() => ({
 const pipVideoRef = ref<HTMLVideoElement | null>(null);
 let syncInterval: ReturnType<typeof setInterval> | null = null;
 
-// Get the current active main video element from the DOM for time sync
+// Get the current active main video element via shared singleton refs
 const getMainVideoEl = (): HTMLVideoElement | null => {
-  // The main player's active video has opacity-100 class
-  const videos = document.querySelectorAll<HTMLVideoElement>('video');
-  for (let i = 0; i < videos.length; i += 1) {
-    const v = videos[i];
-    if (v !== pipVideoRef.value && v.src && !v.paused) {
-      return v;
-    }
-  }
-  // Fallback: return any non-pip video with a src
-  for (let i = 0; i < videos.length; i += 1) {
-    const v = videos[i];
-    if (v !== pipVideoRef.value && v.src) {
-      return v;
-    }
-  }
-  return null;
+  return activeVideo.value === 'A' ? videoA.value : videoB.value;
 };
 
 const startPip = (): void => {

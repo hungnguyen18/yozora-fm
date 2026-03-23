@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { Search, X } from 'lucide-vue-next';
+import { Search, X, Music, User, Tv } from 'lucide-vue-next';
 import { useSongsStore } from '@/stores/songs';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { usePlayerStore } from '@/stores/player';
@@ -97,99 +97,359 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="fixed top-4 left-4 z-20">
-    <!-- Collapsed: icon button -->
-    <button
-      v-if="!isExpanded"
-      class="flex items-center justify-center w-10 h-10 rounded-full bg-midnight border border-primary/30 text-soft-white hover:border-primary transition-colors cursor-pointer"
-      aria-label="Open search"
-      @click="isExpanded = true"
-    >
-      <Search :size="20" />
-    </button>
-
-    <!-- Expanded: input + results -->
-    <div v-else class="flex flex-col w-80">
-      <div class="flex items-center gap-2 bg-midnight border border-primary/30 focus-within:border-primary rounded-lg px-3 py-2 transition-colors">
-        <Search :size="16" class="text-muted-lavender shrink-0" />
-        <input
-          ref="inputRef"
-          v-model="query"
-          type="text"
-          class="flex-1 bg-transparent text-soft-white text-sm placeholder:text-muted-lavender outline-none"
-          placeholder="Search songs, artists, anime..."
-          @keydown.escape="close"
-        />
-        <button
-          class="text-muted-lavender hover:text-soft-white transition-colors cursor-pointer"
-          aria-label="Close search"
-          @click="close"
-        >
-          <X :size="16" />
-        </button>
-      </div>
-
-      <!-- Results dropdown -->
-      <div
-        v-if="isSearching || listResult.length > 0"
-        class="mt-1 bg-midnight border border-white/10 rounded-lg shadow-xl max-h-80 overflow-y-auto"
+  <div class="search-bar-root">
+    <!-- Collapsed: compact pill button -->
+    <Transition name="search-toggle">
+      <button
+        v-if="!isExpanded"
+        class="search-trigger"
+        aria-label="Open search"
+        @click="isExpanded = true"
       >
-        <!-- Loading state -->
-        <div v-if="isSearching" class="px-4 py-3 text-sm text-muted-lavender">
-          Searching...
+        <Search :size="16" />
+        <span class="search-trigger-label">Search</span>
+        <kbd class="search-kbd">/</kbd>
+      </button>
+    </Transition>
+
+    <!-- Expanded: input + results overlay -->
+    <Transition name="search-expand">
+      <div v-if="isExpanded" class="search-overlay">
+        <!-- Backdrop: click to close -->
+        <div class="search-backdrop" @click="close" />
+
+        <div class="search-panel">
+          <div class="search-input-row">
+            <Search :size="18" class="text-muted-lavender shrink-0" />
+            <input
+              ref="inputRef"
+              v-model="query"
+              type="text"
+              class="search-input"
+              placeholder="Search songs, artists, anime..."
+              @keydown.escape="close"
+            />
+            <button
+              class="search-close-btn"
+              aria-label="Close search"
+              @click="close"
+            >
+              <X :size="16" />
+            </button>
+          </div>
+
+          <!-- Results dropdown -->
+          <div
+            v-if="isSearching || listResult.length > 0"
+            class="search-results"
+          >
+            <!-- Loading state -->
+            <div v-if="isSearching" class="search-loading">
+              <div class="search-loading-dot" />
+              <span>Searching...</span>
+            </div>
+
+            <template v-else>
+              <!-- Songs group -->
+              <div v-if="listResult.length > 0">
+                <div class="search-group-header">
+                  <Music :size="12" class="text-primary-light" />
+                  <span>Songs</span>
+                </div>
+                <div
+                  v-for="song in listResult.slice(0, 8)"
+                  :key="song.id"
+                  class="search-result-item"
+                  @click="onSelectSong(song)"
+                >
+                  <p class="search-result-title">{{ song.title }}</p>
+                  <p class="search-result-meta">
+                    {{ song.artist?.name }}
+                    <span v-if="song.anime?.title"> · {{ song.anime.title }}</span>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Artists group -->
+              <div v-if="uniqueArtists().length > 0">
+                <div class="search-group-header">
+                  <User :size="12" class="text-secondary" />
+                  <span>Artists</span>
+                </div>
+                <div
+                  v-for="artistName in uniqueArtists().slice(0, 4)"
+                  :key="artistName"
+                  class="search-result-item"
+                  @click="onSelectSong(listResult.find((s) => s.artist?.name === artistName)!)"
+                >
+                  <p class="search-result-title">{{ artistName }}</p>
+                </div>
+              </div>
+
+              <!-- Anime group -->
+              <div v-if="uniqueAnime().length > 0">
+                <div class="search-group-header">
+                  <Tv :size="12" class="text-accent" />
+                  <span>Anime</span>
+                </div>
+                <div
+                  v-for="animeTitle in uniqueAnime().slice(0, 4)"
+                  :key="animeTitle"
+                  class="search-result-item"
+                  @click="onSelectSong(listResult.find((s) => s.anime?.title === animeTitle)!)"
+                >
+                  <p class="search-result-title">{{ animeTitle }}</p>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Empty state hint -->
+          <div
+            v-if="!isSearching && listResult.length === 0 && query.length === 0"
+            class="search-hint"
+          >
+            Type at least 2 characters to search
+          </div>
         </div>
-
-        <template v-else>
-          <!-- Songs group -->
-          <div v-if="listResult.length > 0">
-            <div class="px-4 pt-3 pb-1 text-xs text-muted-lavender uppercase tracking-wider">
-              Songs
-            </div>
-            <div
-              v-for="song in listResult"
-              :key="song.id"
-              class="px-4 py-2 cursor-pointer hover:bg-primary/10 transition-colors"
-              @click="onSelectSong(song)"
-            >
-              <p class="text-sm text-soft-white truncate">{{ song.title }}</p>
-              <p class="text-xs text-muted-lavender truncate">
-                {{ song.artist?.name }}
-                <span v-if="song.anime?.title"> · {{ song.anime.title }}</span>
-              </p>
-            </div>
-          </div>
-
-          <!-- Artists group -->
-          <div v-if="uniqueArtists().length > 0">
-            <div class="px-4 pt-3 pb-1 text-xs text-muted-lavender uppercase tracking-wider">
-              Artists
-            </div>
-            <div
-              v-for="artistName in uniqueArtists()"
-              :key="artistName"
-              class="px-4 py-2 cursor-pointer hover:bg-primary/10 transition-colors"
-              @click="onSelectSong(listResult.find((s) => s.artist?.name === artistName)!)"
-            >
-              <p class="text-sm text-soft-white truncate">{{ artistName }}</p>
-            </div>
-          </div>
-
-          <!-- Anime group -->
-          <div v-if="uniqueAnime().length > 0">
-            <div class="px-4 pt-3 pb-1 text-xs text-muted-lavender uppercase tracking-wider">
-              Anime
-            </div>
-            <div
-              v-for="animeTitle in uniqueAnime()"
-              :key="animeTitle"
-              class="px-4 py-2 cursor-pointer hover:bg-primary/10 transition-colors"
-              @click="onSelectSong(listResult.find((s) => s.anime?.title === animeTitle)!)"
-            >
-              <p class="text-sm text-soft-white truncate">{{ animeTitle }}</p>
-            </div>
-          </div>
-        </template>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.search-bar-root {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+}
+
+/* --- Collapsed trigger button --- */
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(20, 21, 41, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  border-radius: 9999px;
+  color: #9b9bb4;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.search-trigger:hover {
+  border-color: rgba(79, 70, 229, 0.5);
+  color: #e8e8f0;
+  background: rgba(20, 21, 41, 0.9);
+}
+
+.search-trigger-label {
+  pointer-events: none;
+}
+
+.search-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6875rem;
+  color: #9b9bb4;
+  line-height: 1;
+}
+
+/* --- Expanded overlay --- */
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  padding-top: 5rem;
+}
+
+.search-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 11, 26, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.search-panel {
+  position: relative;
+  width: 28rem;
+  max-width: calc(100vw - 2rem);
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 21, 41, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(79, 70, 229, 0.08);
+  overflow: hidden;
+  max-height: calc(100vh - 8rem);
+}
+
+.search-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e8e8f0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.search-input::placeholder {
+  color: #9b9bb4;
+}
+
+.search-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  background: none;
+  border: none;
+  color: #9b9bb4;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.search-close-btn:hover {
+  color: #e8e8f0;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* --- Results --- */
+.search-results {
+  overflow-y: auto;
+  max-height: 24rem;
+  padding-bottom: 0.5rem;
+}
+
+.search-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.75rem 1rem 0.375rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #9b9bb4;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.search-result-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.search-result-item:hover {
+  background: rgba(79, 70, 229, 0.12);
+}
+
+.search-result-title {
+  font-size: 0.875rem;
+  color: #e8e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-meta {
+  font-size: 0.75rem;
+  color: #9b9bb4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0.125rem;
+}
+
+.search-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #9b9bb4;
+}
+
+.search-loading-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: #4f46e5;
+  animation: search-pulse 1s ease-in-out infinite;
+}
+
+@keyframes search-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.search-hint {
+  padding: 1rem;
+  font-size: 0.8125rem;
+  color: #9b9bb4;
+  text-align: center;
+}
+
+/* --- Transitions --- */
+.search-toggle-enter-active,
+.search-toggle-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.search-toggle-enter-from,
+.search-toggle-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.search-expand-enter-active {
+  transition: opacity 0.2s ease;
+}
+
+.search-expand-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.search-expand-enter-from,
+.search-expand-leave-to {
+  opacity: 0;
+}
+</style>
