@@ -5,6 +5,7 @@ import GalaxyScene from '@/components/galaxy/GalaxyScene.vue';
 import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';
 import EraIndicator from '@/components/navigation/EraIndicator.vue';
+import EraSummary from '@/components/navigation/EraSummary.vue';
 import Minimap from '@/components/navigation/Minimap.vue';
 import AuthButton from '@/components/ui/AuthButton.vue';
 import UserMenu from '@/components/ui/UserMenu.vue';
@@ -23,6 +24,7 @@ onMounted(() => {
     <DetailPanel />
     <PipPlayer />
     <EraIndicator />
+    <EraSummary />
     <Minimap />
     <AuthButton v-if="!authStore.isAuthenticated" />
     <UserMenu v-else />
