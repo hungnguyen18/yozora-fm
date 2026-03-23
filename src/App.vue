@@ -6,7 +6,6 @@ import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';
 import EraIndicator from '@/components/navigation/EraIndicator.vue';
 import Minimap from '@/components/navigation/Minimap.vue';
-import SearchBar from '@/components/navigation/SearchBar.vue';
 import AuthButton from '@/components/ui/AuthButton.vue';
 import UserMenu from '@/components/ui/UserMenu.vue';
 import { useAuthStore } from '@/stores/auth';
@@ -25,7 +24,6 @@ onMounted(() => {
     <PipPlayer />
     <EraIndicator />
     <Minimap />
-    <SearchBar />
     <AuthButton v-if="!authStore.isAuthenticated" />
     <UserMenu v-else />
   </div>
