@@ -4,8 +4,6 @@ import { ref, computed, onMounted } from 'vue';
 import GalaxyScene from '@/components/galaxy/GalaxyScene.vue';
 import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';
-import EraIndicator from '@/components/navigation/EraIndicator.vue';
-import EraSummary from '@/components/navigation/EraSummary.vue';
 import GenreLegend from '@/components/navigation/GenreLegend.vue';
 import Minimap from '@/components/navigation/Minimap.vue';
 import RandomPlayButton from '@/components/navigation/RandomPlayButton.vue';
@@ -75,8 +73,6 @@ onMounted(async () => {
     <DetailPanel />
     <PipPlayer />
     <SearchBar />
-    <EraIndicator />
-    <EraSummary />
     <Minimap />
     <GenreLegend />
     <RandomPlayButton />
@@ -99,7 +95,7 @@ onMounted(async () => {
 <style scoped>
 .onboarding-tooltip {
   position: fixed;
-  bottom: 9rem;
+  bottom: 6.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
