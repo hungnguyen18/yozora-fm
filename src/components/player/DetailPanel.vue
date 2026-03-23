@@ -4,7 +4,7 @@ import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
-import { X, Orbit, ChevronRight, Share2, Check } from 'lucide-vue-next';
+import { X, Orbit, ChevronRight, Share2, Check, SkipForward } from 'lucide-vue-next';
 import VideoPlayer from '@/components/player/VideoPlayer.vue';
 import YouTubeFallback from '@/components/player/YouTubeFallback.vue';
 import ExternalLinkCard from '@/components/player/ExternalLinkCard.vue';
@@ -254,8 +254,16 @@ const shareSong = async () => {
             <div class="action-bar__left">
               <VoteButton v-if="song" :song-id="song.id" />
               <button
-                class="share-btn"
-                :class="{ 'share-btn--copied': isCopied }"
+                class="action-btn"
+                aria-label="Next song"
+                @click="playerStore.next(true)"
+              >
+                <SkipForward :size="14" fill="currentColor" />
+                <span>Next</span>
+              </button>
+              <button
+                class="action-btn"
+                :class="{ 'action-btn--success': isCopied }"
                 aria-label="Copy song link"
                 @click="shareSong"
               >
@@ -739,7 +747,7 @@ const shareSong = async () => {
    SHARE BUTTON
    ═══════════════════════════════════════════════ */
 
-.share-btn {
+.action-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -753,13 +761,13 @@ const shareSong = async () => {
   transition: all 0.2s ease;
 }
 
-.share-btn:hover {
+.action-btn:hover {
   color: #E8E8F0;
   border-color: rgba(155, 155, 180, 0.3);
   background: rgba(155, 155, 180, 0.06);
 }
 
-.share-btn--copied {
+.action-btn--success {
   color: #34D399;
   border-color: rgba(52, 211, 153, 0.3);
 }

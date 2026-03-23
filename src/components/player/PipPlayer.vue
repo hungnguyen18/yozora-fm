@@ -100,7 +100,7 @@ const togglePlay = (): void => {
 };
 
 const skipNext = (): void => {
-  playerStore.next();
+  playerStore.next(true);
 };
 
 const expand = (): void => {

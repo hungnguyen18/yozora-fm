@@ -39,9 +39,15 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   // Advance to the nearest song in the same decade era.
-  // Picks a random candidate from the same era to avoid predictable repetition.
-  function next() {
-    if (!autoPlay.value || !currentSong.value) {
+  // `userTriggered` = true when called from UI skip button (always works).
+  // `userTriggered` = false when called from video ended event (requires autoPlay).
+  function next(userTriggered = false) {
+    if (!userTriggered && !autoPlay.value) {
+      isPlaying.value = false;
+      progress.value = 0;
+      return;
+    }
+    if (!currentSong.value) {
       isPlaying.value = false;
       progress.value = 0;
       return;
@@ -54,10 +60,13 @@ export const usePlayerStore = defineStore("player", () => {
     const currentDecade = Math.floor(currentYear / 10) * 10;
     const currentId = currentSong.value.id;
 
-    // Collect candidates: same decade, different song
+    // Collect candidates: same decade, different song, must have video
     const listSameEra: ISong[] = [];
     for (let i = 0; i < songsStore.listSong.length; i += 1) {
       const s = songsStore.listSong[i];
+      if (!s.animethemes_slug) {
+        continue;
+      }
       const decade = Math.floor((s.year ?? 1980) / 10) * 10;
       if (decade === currentDecade && s.id !== currentId) {
         listSameEra.push(s);
@@ -97,13 +106,15 @@ export const usePlayerStore = defineStore("player", () => {
       }
       nextSong = nearest;
     } else {
-      // Fall back to random pick when position data is unavailable
       nextSong = listSameEra[Math.floor(Math.random() * listSameEra.length)];
     }
 
     play(nextSong);
-    galaxyStore.selectedSongId = nextSong.id;
-    galaxyStore.flyToStar(nextSong.id);
+
+    // Only fly to star if detail panel is open (not in PiP mode)
+    if (!isPip.value) {
+      galaxyStore.flyToStar(nextSong.id);
+    }
   }
 
   // Pick and play a random song, optionally filtered by decade (e.g. 1980, 1990).
