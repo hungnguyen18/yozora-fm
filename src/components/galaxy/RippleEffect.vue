@@ -7,14 +7,12 @@ import { shallowRef, watch, onBeforeUnmount } from 'vue';
 import { useLoop } from '@tresjs/core';
 import * as THREE from 'three';
 import { usePlayerStore } from '@/stores/player';
-import { useSongsStore } from '@/stores/songs';
 import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
 
 const playerStore = usePlayerStore();
-const songsStore = useSongsStore();
-const { computeBuffers } = useGalaxyLayout();
+const { computeSinglePosition } = useGalaxyLayout();
 
 const RING_COUNT = 4;
 const RING_DURATION = 3.0;   // seconds per ring cycle
@@ -68,25 +66,10 @@ const disposeRings = (): void => {
   listRing = [];
 };
 
-// Find the 3D world position of the song with the given id
-const findStarPosition = (songId: number): THREE.Vector3 | null => {
-  const listSong = songsStore.listSong;
-  if (listSong.length === 0) { return null; }
-
-  const { matrices } = computeBuffers(listSong);
-
-  const songIndex = listSong.findIndex((s) => s.id === songId);
-  if (songIndex === -1) { return null; }
-
-  const matrix = new THREE.Matrix4();
-  matrix.fromArray(matrices, songIndex * 16);
-
-  const pos = new THREE.Vector3();
-  const quat = new THREE.Quaternion();
-  const scale = new THREE.Vector3();
-  matrix.decompose(pos, quat, scale);
-
-  return pos;
+// Find the 3D world position of the song with the given id.
+// Uses computeSinglePosition to avoid recomputing all 9111 positions.
+const findStarPosition = (song: { id: number; year?: number; genre?: TGenre }): THREE.Vector3 => {
+  return computeSinglePosition(song.id, song.year ?? 1980, song.genre);
 };
 
 watch(
@@ -97,11 +80,7 @@ watch(
       return;
     }
 
-    const position = findStarPosition(song.id);
-    if (!position) {
-      disposeRings();
-      return;
-    }
+    const position = findStarPosition(song);
 
     const genreKey = (song.genre ?? 'other') as TGenre;
     const hexColor = GENRE_COLOR_MAP[genreKey] ?? GENRE_COLOR_MAP.other;

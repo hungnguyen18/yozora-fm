@@ -108,5 +108,36 @@ export const useGalaxyLayout = () => {
     return { matrices, colors, sizes, count };
   };
 
-  return { computeBuffers };
+  // Compute the world position for a single song without allocating full buffers.
+  // Uses the same spiral layout formula as computeBuffers.
+  const computeSinglePosition = (
+    songId: number,
+    year: number,
+    genre: TGenre | undefined,
+  ): THREE.Vector3 => {
+    const clampedYear = Math.max(1980, Math.min(year, 1980 + TOTAL_SPAN_YEARS));
+    const normalised = (clampedYear - 1980) / TOTAL_SPAN_YEARS;
+
+    const baseAngleDeg = normalised * MAX_ANGLE_DEG;
+    const baseRadius = R_MAX * (1 - normalised);
+
+    const armIndex = GENRE_ARM_MAP[genre ?? "other"] ?? 2;
+    const armOffsetDeg = armIndex * 90;
+
+    const rng = seededRandom(songId);
+    const angleJitterDeg = (rng() * 2 - 1) * 15;
+    const radiusJitterPct = (rng() * 2 - 1) * 0.08;
+
+    const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const radius = baseRadius * (1 + radiusJitterPct);
+
+    return new THREE.Vector3(
+      radius * Math.cos(angleRad),
+      radius * Math.sin(angleRad),
+      0,
+    );
+  };
+
+  return { computeBuffers, computeSinglePosition };
 };

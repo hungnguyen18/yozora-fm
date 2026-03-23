@@ -286,6 +286,7 @@ const { onBeforeRender } = useLoop();
 // At zoom > ZOOM_CAP_START, scales are reduced so stars stay readable.
 const ZOOM_CAP_START = 4;
 const MAX_SCREEN_STAR_SIZE = 3.0; // maximum world-space scale allowed
+const ZOOM_CAP_THRESHOLD = 0.5; // only recalculate when zoom changes by this much
 const scaleCapHelper = new THREE.Matrix4();
 const scaleCapPos = new THREE.Vector3();
 const scaleCapQuat = new THREE.Quaternion();
@@ -320,9 +321,10 @@ onBeforeRender(({ delta }) => {
   const mesh = instancedMesh.value;
   if (!mesh || !mesh.instanceColor) { return; }
 
-  // Apply star scale cap when zoom changes
+  // Apply star scale cap only when zoom crosses a significant threshold
+  // to avoid recalculating all 9111 instances during smooth zoom animations
   const currentZoom = galaxyStore.zoomLevel;
-  if (currentZoom !== lastAppliedZoom) {
+  if (Math.abs(currentZoom - lastAppliedZoom) >= ZOOM_CAP_THRESHOLD || lastAppliedZoom < 0) {
     applyScaleCap(mesh, currentZoom);
     lastAppliedZoom = currentZoom;
   }

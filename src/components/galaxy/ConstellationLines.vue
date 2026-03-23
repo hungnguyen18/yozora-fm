@@ -4,63 +4,19 @@ import * as THREE from 'three';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useSongsStore } from '@/stores/songs';
 import { useLOD } from '@/composables/useLOD';
+import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
 import { GENRE_COLOR_MAP } from '@/types';
-import type { TGenre } from '@/types';
+import type { ISong, TGenre } from '@/types';
 
 const galaxyStore = useGalaxyStore();
 const songsStore = useSongsStore();
 const { showConstellations } = useLOD();
+const { computeSinglePosition } = useGalaxyLayout();
 
 const lineGroup = shallowRef<THREE.Group>(markRaw(new THREE.Group()));
 
 // Cache of line objects keyed by artist_id so we can show/hide individually
 const artistLineMap = new Map<number, THREE.LineSegments>();
-
-// Re-use the same position computation as useGalaxyLayout to get star world positions
-const R_MAX = 500;
-const TOTAL_SPAN_YEARS = 46;
-const MAX_ANGLE_DEG = 1620;
-
-const GENRE_ARM_MAP: Record<string, number> = {
-  rock: 0,
-  electronic: 1,
-  pop: 2,
-  ballad: 3,
-  orchestral: 0,
-  other: 2,
-};
-
-const seededRandom = (seed: number): (() => number) => {
-  let s = seed >>> 0;
-  return () => {
-    s += 0x6d2b79f5;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-const computeSongPosition = (songId: number, year: number, genre: TGenre | undefined): THREE.Vector3 => {
-  const clampedYear = Math.max(1980, Math.min(year, 1980 + TOTAL_SPAN_YEARS));
-  const normalised = (clampedYear - 1980) / TOTAL_SPAN_YEARS;
-
-  const baseAngleDeg = normalised * MAX_ANGLE_DEG;
-  const baseRadius = R_MAX * (1 - normalised);
-
-  const armIndex = GENRE_ARM_MAP[genre ?? 'other'] ?? 2;
-  const armOffsetDeg = armIndex * 90;
-
-  const rng = seededRandom(songId);
-  const angleJitterDeg = (rng() * 2 - 1) * 15;
-  const radiusJitterPct = (rng() * 2 - 1) * 0.08;
-
-  const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
-  const angleRad = (angleDeg * Math.PI) / 180;
-  const radius = baseRadius * (1 + radiusJitterPct);
-
-  return new THREE.Vector3(radius * Math.cos(angleRad), radius * Math.sin(angleRad), 0);
-};
 
 // Build line segments for each artist with 2+ songs and add them to lineGroup
 const buildConstellationLines = (): void => {
@@ -75,6 +31,12 @@ const buildConstellationLines = (): void => {
   }
   artistLineMap.clear();
 
+  // Build a Map<songId, ISong> for O(1) lookups instead of listSong.find()
+  const songById = new Map<number, ISong>();
+  for (let i = 0; i < listSong.length; i += 1) {
+    songById.set(listSong[i].id, listSong[i]);
+  }
+
   // Ensure constellationData is populated
   galaxyStore.computeConstellations(listSong);
 
@@ -86,17 +48,17 @@ const buildConstellationLines = (): void => {
 
     for (let i = 0; i < listSongId.length; i += 1) {
       const songId = listSongId[i];
-      const song = listSong.find((s) => s.id === songId);
+      const song = songById.get(songId);
       if (!song) { continue; }
 
-      const pos = computeSongPosition(song.id, song.year ?? 1980, song.genre);
+      const pos = computeSinglePosition(song.id, song.year ?? 1980, song.genre);
       listPosition.push(pos);
     }
 
     if (listPosition.length < 2) { continue; }
 
     // Determine genre colour from first song of this artist
-    const firstSong = listSong.find((s) => s.artist_id === artistId);
+    const firstSong = songById.get(listSongId[0]);
     const genreKey: TGenre = (firstSong?.genre ?? 'other') as TGenre;
     const hexColor = GENRE_COLOR_MAP[genreKey] ?? GENRE_COLOR_MAP.other;
     const color = new THREE.Color(hexColor);
