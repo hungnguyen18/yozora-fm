@@ -151,31 +151,31 @@ const onWarpClick = (): void => {
 
 <style scoped>
 /* ═══════════════════════════════════════════════
-   ERA DIAL — Cosmic Radio Tuner
+   ERA DIAL — Vertical left sidebar
    ═══════════════════════════════════════════════ */
 
 .era-dial {
   position: fixed;
-  bottom: 1.75rem;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 40;
 }
 
 .era-dial__bar {
   display: flex;
+  flex-direction: column;
   align-items: stretch;
   gap: 2px;
   padding: 4px;
-  border-radius: 16px;
-  background: rgba(13, 14, 34, 0.85);
+  border-radius: 14px;
+  background: rgba(13, 14, 34, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(155, 155, 180, 0.08);
+  border: 1px solid rgba(155, 155, 180, 0.06);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.3),
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 60px rgba(79, 70, 229, 0.06);
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 /* ═══════════════════════════════════════════════
@@ -188,37 +188,37 @@ const onWarpClick = (): void => {
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: 10px 16px 8px;
-  border-radius: 12px;
+  padding: 8px 12px 6px;
+  border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  min-width: 64px;
+  min-width: 52px;
 }
 
 .era-segment:hover {
-  transform: translateY(-3px);
+  transform: translateX(3px);
   background: rgba(255, 255, 255, 0.03);
   border-color: color-mix(in srgb, var(--era-color) 25%, transparent);
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.3),
-    0 0 20px color-mix(in srgb, var(--era-color) 15%, transparent);
+    4px 0 16px rgba(0, 0, 0, 0.3),
+    0 0 16px color-mix(in srgb, var(--era-color) 12%, transparent);
 }
 
 .era-segment:active {
-  transform: translateY(-1px) scale(0.97);
+  transform: translateX(1px) scale(0.97);
 }
 
-/* Glowing top edge — always visible, intensifies on hover/active */
+/* Glowing LEFT edge — vertical orientation */
 .era-segment__glow {
   position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  border-radius: 0 0 2px 2px;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
   background: var(--era-color);
   opacity: 0.35;
   transition: all 0.25s ease;
@@ -226,16 +226,16 @@ const onWarpClick = (): void => {
 
 .era-segment:hover .era-segment__glow {
   opacity: 0.8;
-  left: 10%;
-  right: 10%;
+  top: 10%;
+  bottom: 10%;
   box-shadow: 0 0 8px var(--era-color);
 }
 
 .era-segment--active .era-segment__glow {
   opacity: 1;
-  left: 5%;
-  right: 5%;
-  height: 2px;
+  top: 5%;
+  bottom: 5%;
+  width: 2px;
   box-shadow: 0 0 12px var(--era-color);
   animation: glowBreathe 2.5s ease-in-out infinite;
 }
@@ -255,29 +255,23 @@ const onWarpClick = (): void => {
 .era-segment__pulse {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 2px solid var(--era-color);
   animation: pulseRing 0.6s ease-out forwards;
   pointer-events: none;
 }
 
 @keyframes pulseRing {
-  0% {
-    opacity: 0.8;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.4);
-  }
+  0% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.4); }
 }
 
 /* Text elements */
 .era-segment__decade {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 700;
-  color: rgba(232, 232, 240, 0.9);
+  color: rgba(232, 232, 240, 0.85);
   letter-spacing: -0.01em;
   line-height: 1;
   transition: color 0.2s;
@@ -292,8 +286,8 @@ const onWarpClick = (): void => {
 }
 
 .era-segment__name {
-  font-size: 0.5625rem;
-  color: rgba(155, 155, 180, 0.5);
+  font-size: 0.5rem;
+  color: rgba(155, 155, 180, 0.45);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 500;
@@ -302,26 +296,26 @@ const onWarpClick = (): void => {
 }
 
 .era-segment:hover .era-segment__name {
-  color: rgba(155, 155, 180, 0.75);
+  color: rgba(155, 155, 180, 0.7);
 }
 
 .era-segment__count {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.5625rem;
-  color: rgba(155, 155, 180, 0.35);
+  font-size: 0.5rem;
+  color: rgba(155, 155, 180, 0.3);
   line-height: 1;
   margin-top: 1px;
 }
 
 /* ═══════════════════════════════════════════════
-   DIVIDER
+   DIVIDER — horizontal in vertical layout
    ═══════════════════════════════════════════════ */
 
 .era-dial__divider {
-  width: 1px;
+  height: 1px;
   align-self: stretch;
-  margin: 8px 4px;
-  background: rgba(155, 155, 180, 0.12);
+  margin: 4px 8px;
+  background: rgba(155, 155, 180, 0.1);
 }
 
 /* ═══════════════════════════════════════════════
@@ -334,33 +328,33 @@ const onWarpClick = (): void => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 10px 14px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(79, 70, 229, 0.2);
-  background: rgba(79, 70, 229, 0.06);
-  color: rgba(129, 140, 248, 0.8);
+  gap: 2px;
+  padding: 8px 12px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  background: rgba(79, 70, 229, 0.05);
+  color: rgba(129, 140, 248, 0.7);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
 .warp-btn:hover {
-  transform: translateY(-3px);
-  border-color: rgba(79, 70, 229, 0.4);
-  background: rgba(79, 70, 229, 0.12);
+  transform: translateX(3px);
+  border-color: rgba(79, 70, 229, 0.35);
+  background: rgba(79, 70, 229, 0.1);
   color: #A5B4FC;
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.3),
-    0 0 24px rgba(79, 70, 229, 0.15);
+    4px 0 16px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(79, 70, 229, 0.12);
 }
 
 .warp-btn:active {
-  transform: translateY(-1px) scale(0.97);
+  transform: translateX(1px) scale(0.97);
 }
 
 .warp-btn__label {
-  font-size: 0.5625rem;
+  font-size: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 600;
@@ -369,56 +363,54 @@ const onWarpClick = (): void => {
 .warp-btn__pulse {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 2px solid #818CF8;
   animation: pulseRing 0.6s ease-out forwards;
   pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════════
-   MOBILE RESPONSIVE
+   MOBILE RESPONSIVE — horizontal on small screens
    ═══════════════════════════════════════════════ */
 
 @media (max-width: 640px) {
+  .era-dial {
+    left: 50%;
+    top: auto;
+    bottom: 1rem;
+    transform: translateX(-50%);
+  }
+
   .era-dial__bar {
+    flex-direction: row;
     gap: 1px;
     padding: 3px;
   }
 
   .era-segment {
-    padding: 8px 10px 6px;
-    min-width: 48px;
-  }
-
-  .era-segment__decade {
-    font-size: 0.8125rem;
+    padding: 6px 8px 4px;
+    min-width: 40px;
   }
 
   .era-segment__name {
     display: none;
   }
 
-  .warp-btn {
-    padding: 8px 10px 6px;
-  }
-}
-
-@media (max-width: 420px) {
-  .era-dial {
-    left: 12px;
-    right: 12px;
-    transform: none;
-  }
-
-  .era-dial__bar {
-    width: 100%;
-    justify-content: space-between;
+  .era-segment__glow {
+    /* Switch back to top edge on mobile horizontal */
+    left: 20%;
+    right: 20%;
+    top: 0;
+    bottom: auto;
+    width: auto;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
   }
 
-  .era-segment {
-    flex: 1;
-    min-width: 0;
-    padding: 8px 6px 6px;
+  .era-dial__divider {
+    width: 1px;
+    height: auto;
+    margin: 6px 2px;
   }
 }
 </style>

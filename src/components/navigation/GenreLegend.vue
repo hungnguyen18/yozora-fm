@@ -22,39 +22,39 @@ const listGenreEntry = Object.entries(GENRE_COLOR_MAP) as [TGenre, string][];
 </template>
 
 <style scoped>
+/* Genre legend — horizontal row below minimap (bottom-right) */
 .genre-legend {
   position: fixed;
-  bottom: 5rem;
-  left: 0.75rem;
+  bottom: 0.5rem;
+  right: 0.75rem;
   z-index: 20;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: rgba(13, 14, 34, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(155, 155, 180, 0.06);
+  flex-direction: row;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(13, 14, 34, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .genre-legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
 }
 
 .genre-legend-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 9999px;
   flex-shrink: 0;
 }
 
 .genre-legend-label {
-  font-size: 0.625rem;
-  color: rgba(155, 155, 180, 0.6);
+  font-size: 0.5625rem;
+  color: rgba(155, 155, 180, 0.5);
   text-transform: capitalize;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 </style>

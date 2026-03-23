@@ -8,7 +8,7 @@ import type { TGenre } from '@/types';
 const galaxyStore = useGalaxyStore();
 const songsStore = useSongsStore();
 
-const CANVAS_SIZE = 120;
+const CANVAS_SIZE = 100;
 const R_MAX = 500;
 const TOTAL_SPAN_YEARS = 46;
 const MAX_ANGLE_DEG = 1620;
@@ -208,50 +208,34 @@ const onMinimapClick = (e: MouseEvent) => {
 </template>
 
 <style scoped>
+/* Minimap — bottom-right, compact, above genre legend */
 .minimap-wrapper {
   position: fixed;
-  bottom: 1.25rem;
-  right: 1.25rem;
+  bottom: 1.75rem;
+  right: 0.75rem;
   z-index: 20;
-  border-radius: 0.625rem;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(79, 70, 229, 0.25);
-  background: rgba(20, 21, 41, 0.7);
+  border: 1px solid rgba(155, 155, 180, 0.08);
+  background: rgba(13, 14, 34, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.2),
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    0 0 40px rgba(79, 70, 229, 0.06);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s ease;
 }
 
 .minimap-wrapper:hover {
-  border-color: rgba(79, 70, 229, 0.45);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.2),
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    0 0 40px rgba(79, 70, 229, 0.12);
+  border-color: rgba(155, 155, 180, 0.2);
 }
 
 .minimap-canvas {
   display: block;
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   cursor: crosshair;
 }
 
 .minimap-label {
-  display: block;
-  text-align: center;
-  padding: 0.25rem 0 0.375rem;
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.625rem;
-  font-weight: 500;
-  color: #9b9bb4;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  background: rgba(10, 11, 26, 0.4);
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  display: none;
 }
 </style>
