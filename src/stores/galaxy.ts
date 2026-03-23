@@ -1,12 +1,22 @@
-import { defineStore } from 'pinia';
-import type { ISong, IStarPosition, IEra, TLodTier } from '@/types';
+import { defineStore } from "pinia";
+import type { ISong, IStarPosition, IEra, TLodTier } from "@/types";
 
 const LIST_ERA: IEra[] = [
-  { decade: 1980, name: 'The Dawn of Anime Music', startYear: 1980, endYear: 1989 },
-  { decade: 1990, name: 'The Golden Age of J-Rock', startYear: 1990, endYear: 1999 },
-  { decade: 2000, name: 'Digital Revolution', startYear: 2000, endYear: 2009 },
-  { decade: 2010, name: 'The Streaming Era', startYear: 2010, endYear: 2019 },
-  { decade: 2020, name: 'New Frontier', startYear: 2020, endYear: 2029 },
+  {
+    decade: 1980,
+    name: "The Dawn of Anime Music",
+    startYear: 1980,
+    endYear: 1989,
+  },
+  {
+    decade: 1990,
+    name: "The Golden Age of J-Rock",
+    startYear: 1990,
+    endYear: 1999,
+  },
+  { decade: 2000, name: "Digital Revolution", startYear: 2000, endYear: 2009 },
+  { decade: 2010, name: "The Streaming Era", startYear: 2010, endYear: 2019 },
+  { decade: 2020, name: "New Frontier", startYear: 2020, endYear: 2029 },
 ];
 
 const R_MAX = 500;
@@ -39,7 +49,7 @@ interface IEraStats {
   topGenre: string | null;
 }
 
-export const useGalaxyStore = defineStore('galaxy', {
+export const useGalaxyStore = defineStore("galaxy", {
   state: () => ({
     listStarPosition: [] as IStarPosition[],
     zoomLevel: 1,
@@ -49,7 +59,7 @@ export const useGalaxyStore = defineStore('galaxy', {
     hoveredStarId: null as number | null,
     selectedSongId: null as number | null,
     highlightedGenre: null as string | null,
-    lodTier: 'far' as TLodTier,
+    lodTier: "far" as TLodTier,
   }),
   getters: {
     currentEra: (state): IEra | null => state.focusedEra,
@@ -77,7 +87,10 @@ export const useGalaxyStore = defineStore('galaxy', {
       for (let i = 0; i < listSong.length; i += 1) {
         const song = listSong[i];
         const year = song.year ?? 1980;
-        const clampedYear = Math.max(1980, Math.min(year, 1980 + TOTAL_SPAN_YEARS));
+        const clampedYear = Math.max(
+          1980,
+          Math.min(year, 1980 + TOTAL_SPAN_YEARS),
+        );
 
         const normalised = (clampedYear - 1980) / TOTAL_SPAN_YEARS;
 
@@ -86,13 +99,13 @@ export const useGalaxyStore = defineStore('galaxy', {
         const baseRadius = R_MAX * (1 - normalised);
 
         // Arm offset: 4 arms × 90°
-        const armIndex = GENRE_ARM_MAP[song.genre ?? 'other'] ?? 2;
+        const armIndex = GENRE_ARM_MAP[song.genre ?? "other"] ?? 2;
         const armOffsetDeg = armIndex * 90;
 
         // Seeded jitter for reproducibility
         const rng = seededRandom(song.id);
-        const angleJitterDeg = (rng() * 2 - 1) * 5;        // ±5°
-        const radiusJitterPct = (rng() * 2 - 1) * 0.02;    // ±2%
+        const angleJitterDeg = (rng() * 2 - 1) * 5; // ±5°
+        const radiusJitterPct = (rng() * 2 - 1) * 0.02; // ±2%
 
         const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
         const angleRad = (angleDeg * Math.PI) / 180;
@@ -112,9 +125,19 @@ export const useGalaxyStore = defineStore('galaxy', {
     },
 
     flyToStar(songId: number) {
+      const target = this.listStarPosition.find((sp) => sp.songId === songId);
+      if (!target) {
+        this.selectedSongId = songId;
+        return;
+      }
+
+      // Move camera pan to center on the target star.
+      // The galaxy canvas reads panX/panY to translate the viewport.
+      this.panX = target.x;
+      this.panY = target.y;
       this.selectedSongId = songId;
-      // Actual camera animation is handled by TresJS composables in Phase 3.
-      // This action records intent so the galaxy view can react.
+      // Smooth animation is delegated to the galaxy canvas via the reactive panX/panY,
+      // which the camera controller interpolates with requestAnimationFrame each frame.
     },
 
     setZoomLevel(zoom: number) {
@@ -122,11 +145,11 @@ export const useGalaxyStore = defineStore('galaxy', {
 
       // Determine LOD tier from zoom level
       if (zoom < 2) {
-        this.lodTier = 'far';
+        this.lodTier = "far";
       } else if (zoom < 5) {
-        this.lodTier = 'mid';
+        this.lodTier = "mid";
       } else {
-        this.lodTier = 'close';
+        this.lodTier = "close";
       }
 
       // Determine focused era from zoom level — at high zoom we pick the era

@@ -89,6 +89,21 @@ const onViewConstellation = () => {
         :song="song"
       />
 
+      <!-- Auto-play toggle — sits between the video area and the panel body -->
+      <div class="autoplay-row">
+        <label class="autoplay-label" for="autoplay-toggle">Auto-play</label>
+        <button
+          id="autoplay-toggle"
+          class="autoplay-switch"
+          :class="{ 'autoplay-switch--on': playerStore.autoPlay }"
+          role="switch"
+          :aria-checked="playerStore.autoPlay"
+          @click="playerStore.setAutoPlay(!playerStore.autoPlay)"
+        >
+          <span class="autoplay-switch__thumb" />
+        </button>
+      </div>
+
       <!-- Panel body -->
       <div class="panel-body">
         <!-- 2. Song info -->
@@ -285,6 +300,55 @@ const onViewConstellation = () => {
 
 .constellation-btn:hover {
   color: #818CF8;
+}
+
+/* Auto-play toggle row */
+.autoplay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(155, 155, 180, 0.12);
+}
+
+.autoplay-label {
+  font-size: 0.8125rem;
+  color: #9B9BB4;
+  user-select: none;
+}
+
+/* Track */
+.autoplay-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  background-color: rgba(155, 155, 180, 0.25);
+  transition: background-color 0.2s ease;
+}
+
+.autoplay-switch--on {
+  background-color: #4F46E5;
+}
+
+/* Thumb */
+.autoplay-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #E8E8F0;
+  transition: transform 0.2s ease;
+  display: block;
+}
+
+.autoplay-switch--on .autoplay-switch__thumb {
+  transform: translateX(16px);
 }
 
 /* Community placeholder */

@@ -123,9 +123,14 @@ export const usePlayer = () => {
     });
 
     video.addEventListener("ended", () => {
-      // next() signals the store that playback ended; components resolve the
-      // actual next song via useSongsStore / useGalaxyStore
-      playerStore.next();
+      if (playerStore.autoPlay) {
+        // next() resolves the nearest era song and triggers crossfade via the
+        // currentSong watcher above.
+        playerStore.next();
+      } else {
+        playerStore.isPlaying = false;
+        playerStore.progress = 0;
+      }
     });
   };
 
