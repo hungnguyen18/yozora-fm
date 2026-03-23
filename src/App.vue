@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Yozora.fm — root application shell
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watchEffect } from 'vue';
 import GalaxyScene from '@/components/galaxy/GalaxyScene.vue';
 import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';
@@ -32,7 +32,7 @@ useKeyboardNav();
 // These refs are module-level singletons — binding them in App.vue
 // ensures the <video> elements are always in the DOM, surviving
 // DetailPanel mount/unmount cycles.
-const { videoA, videoB, setupProgressTracking } = usePlayer();
+const { videoA, videoB, activeVideo, videoContainerRect, setupProgressTracking } = usePlayer();
 
 // Attach progress tracking once video elements are available
 const onVideoAReady = (el: HTMLVideoElement | null) => {
@@ -41,6 +41,60 @@ const onVideoAReady = (el: HTMLVideoElement | null) => {
 const onVideoBReady = (el: HTMLVideoElement | null) => {
   if (el) { setupProgressTracking(el); }
 };
+
+// Compute positioning style for the singleton video elements.
+// When videoContainerRect is set (VideoPlayer is mounted), position them
+// over the container area so the video is visible. Otherwise hide them
+// (audio continues since the elements stay in the DOM).
+const videoPositionStyle = computed(() => {
+  const rect = videoContainerRect.value;
+  if (!rect) {
+    return {
+      position: 'fixed' as const,
+      width: '0px',
+      height: '0px',
+      opacity: '0',
+      pointerEvents: 'none' as const,
+      zIndex: '1',
+    };
+  }
+  return {
+    position: 'fixed' as const,
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    opacity: '1',
+    pointerEvents: 'none' as const,
+    zIndex: '53',
+    objectFit: 'cover' as const,
+    borderRadius: '12px',
+    transition: 'opacity 0.3s ease',
+  };
+});
+
+// Style for the inactive video — always hidden
+const videoHiddenStyle = {
+  position: 'fixed' as const,
+  width: '0px',
+  height: '0px',
+  opacity: '0',
+  pointerEvents: 'none' as const,
+};
+
+const videoAStyle = computed(() => {
+  if (activeVideo.value === 'A') {
+    return videoPositionStyle.value;
+  }
+  return videoHiddenStyle;
+});
+
+const videoBStyle = computed(() => {
+  if (activeVideo.value === 'B') {
+    return videoPositionStyle.value;
+  }
+  return videoHiddenStyle;
+});
 
 const isLoading = computed(() => songsStore.isLoading);
 
@@ -83,17 +137,19 @@ onMounted(async () => {
   <div class="w-screen h-screen overflow-hidden bg-[#0A0B1A] relative">
     <LoadingScreen :is-loading="isLoading" />
 
-    <!-- Persistent AUDIO video elements — always hidden, never moved in DOM.
-         These handle all audio playback and survive panel open/close. -->
+    <!-- Persistent video elements — always in DOM, never removed.
+         When the detail panel's VideoPlayer is mounted, these are positioned
+         over its container area so the video is visible.
+         When the panel is closed, they shrink to zero (audio continues). -->
     <video
       :ref="(el) => { if (el) { videoA = el; onVideoAReady(el); } }"
-      style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
+      :style="videoAStyle"
       preload="auto"
       playsinline
     />
     <video
       :ref="(el) => { if (el) { videoB = el; onVideoBReady(el); } }"
-      style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
+      :style="videoBStyle"
       preload="auto"
       playsinline
     />

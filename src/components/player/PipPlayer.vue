@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useDraggable } from '@vueuse/core';
 import { Play, Pause, SkipForward, Volume2, Maximize2 } from 'lucide-vue-next';
 import { usePlayerStore } from '@/stores/player';
@@ -10,11 +10,28 @@ import type { TGenre } from '@/types';
 
 const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
-const { videoA, videoB, activeVideo, setVolume, getVideoUrl } = usePlayer();
+const { videoA, videoB, activeVideo, setVolume } = usePlayer();
 
 const song = computed(() => playerStore.currentSong);
 const isVisible = computed(
   () => playerStore.isPip && song.value !== null,
+);
+
+// Song transition key for crossfade animations
+const songTransitionKey = computed(() => song.value?.id ?? 0);
+
+// Cover art loading state for shimmer
+const isCoverLoading = ref(true);
+
+const onCoverLoad = () => {
+  isCoverLoading.value = false;
+};
+
+watch(
+  () => song.value?.id,
+  () => {
+    isCoverLoading.value = true;
+  },
 );
 
 // Draggable positioning — bottom-center of screen
@@ -24,8 +41,28 @@ const { style: draggableStyle } = useDraggable(pipRef, {
   initialValue: { x: initialX.value, y: window.innerHeight - 100 },
 });
 
-// Volume slider hover state
-const isVolumeHovered = ref(false);
+// Volume slider — click-to-toggle (more reliable than hover with draggable)
+const isVolumeOpen = ref(false);
+const volumeWrapperRef = ref<HTMLElement | null>(null);
+
+const toggleVolume = (): void => {
+  isVolumeOpen.value = !isVolumeOpen.value;
+};
+
+// Close volume slider when clicking outside
+const onDocumentClick = (event: MouseEvent): void => {
+  if (!isVolumeOpen.value) {
+    return;
+  }
+  const wrapper = volumeWrapperRef.value;
+  if (wrapper && !wrapper.contains(event.target as Node)) {
+    isVolumeOpen.value = false;
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick, true);
+});
 
 // Genre glow color
 const genreColor = computed(() => {
@@ -43,73 +80,12 @@ const coverUrl = computed(() => {
     || null;
 });
 
-// Mirror video element for PiP
-const pipVideoRef = ref<HTMLVideoElement | null>(null);
-let syncInterval: ReturnType<typeof setInterval> | null = null;
-
 const getMainVideoEl = (): HTMLVideoElement | null => {
   return activeVideo.value === 'A' ? videoA.value : videoB.value;
 };
 
-const startPip = (): void => {
-  const pipVideo = pipVideoRef.value;
-  if (!pipVideo || !song.value) {
-    return;
-  }
-
-  const url = getVideoUrl(song.value);
-  if (!url) {
-    return;
-  }
-
-  pipVideo.src = url;
-  pipVideo.volume = 0;
-  pipVideo.muted = true;
-
-  const mainVideo = getMainVideoEl();
-  if (mainVideo && mainVideo.currentTime > 0) {
-    pipVideo.currentTime = mainVideo.currentTime;
-  }
-
-  pipVideo.play().catch(() => {
-    // autoplay may be blocked; ignore
-  });
-
-  syncInterval = setInterval(() => {
-    const main = getMainVideoEl();
-    const pip = pipVideoRef.value;
-    if (!main || !pip) {
-      return;
-    }
-    const drift = Math.abs(pip.currentTime - main.currentTime);
-    if (drift > 2) {
-      pip.currentTime = main.currentTime;
-    }
-  }, 2000);
-};
-
-const stopPip = (): void => {
-  if (syncInterval !== null) {
-    clearInterval(syncInterval);
-    syncInterval = null;
-  }
-  const pipVideo = pipVideoRef.value;
-  if (pipVideo) {
-    pipVideo.pause();
-    pipVideo.src = '';
-  }
-};
-
-watch(isVisible, (visible) => {
-  if (visible) {
-    setTimeout(startPip, 50);
-  } else {
-    stopPip();
-  }
-});
-
 onUnmounted(() => {
-  stopPip();
+  document.removeEventListener('click', onDocumentClick, true);
 });
 
 // Actions
@@ -173,45 +149,52 @@ const timeDisplay = computed(() => {
       class="pip-container"
       :style="draggableStyle"
     >
-      <!-- Hidden video element for sync -->
-      <video
-        ref="pipVideoRef"
-        class="pip-video-hidden"
-        playsinline
-        muted
-        loop
-      />
-
       <!-- Main content row -->
       <div class="pip-body">
-        <!-- Thumbnail -->
+        <!-- Thumbnail with crossfade -->
         <div
           class="pip-thumbnail"
           :style="{ borderColor: genreColor + '80' }"
         >
-          <img
-            v-if="coverUrl"
-            :src="coverUrl"
-            :alt="song?.title ?? 'Cover'"
-            class="pip-thumbnail__img"
-          />
-          <div
-            v-else
-            class="pip-thumbnail__fallback"
-            :style="{ background: genreColor + '30' }"
-          >
-            <Play :size="16" :color="genreColor" />
-          </div>
+          <Transition name="pip-cover-crossfade" mode="out-in">
+            <div :key="songTransitionKey" class="pip-thumbnail__wrapper">
+              <!-- Shimmer while loading -->
+              <div
+                v-if="coverUrl && isCoverLoading"
+                class="pip-thumbnail__shimmer"
+              >
+                <div class="pip-thumbnail__shimmer-wave" />
+              </div>
+              <img
+                v-if="coverUrl"
+                :src="coverUrl"
+                :alt="song?.title ?? 'Cover'"
+                class="pip-thumbnail__img"
+                :class="{ 'pip-thumbnail__img--loading': isCoverLoading }"
+                @load="onCoverLoad"
+              />
+              <div
+                v-else
+                class="pip-thumbnail__fallback"
+                :style="{ background: genreColor + '30' }"
+              >
+                <Play :size="16" :color="genreColor" />
+              </div>
+            </div>
+          </Transition>
         </div>
 
-        <!-- Song info -->
-        <div
-          v-if="song"
-          class="pip-info"
-        >
-          <p class="pip-info__title">{{ song.title }}</p>
-          <p class="pip-info__artist">{{ song.artist?.name ?? `Artist #${song.artist_id}` }}</p>
-        </div>
+        <!-- Song info with slide-in from right -->
+        <Transition name="pip-info-slide" mode="out-in">
+          <div
+            v-if="song"
+            :key="songTransitionKey"
+            class="pip-info"
+          >
+            <p class="pip-info__title">{{ song.title }}</p>
+            <p class="pip-info__artist">{{ song.artist?.name ?? `Artist #${song.artist_id}` }}</p>
+          </div>
+        </Transition>
 
         <!-- Controls -->
         <div class="pip-controls">
@@ -234,23 +217,24 @@ const timeDisplay = computed(() => {
             <SkipForward :size="14" />
           </button>
 
-          <!-- Volume -->
+          <!-- Volume — click-to-toggle -->
           <div
+            ref="volumeWrapperRef"
             class="pip-volume-wrapper"
-            @mouseenter="isVolumeHovered = true"
-            @mouseleave="isVolumeHovered = false"
           >
             <button
               class="pip-btn"
               aria-label="Volume"
-              @click.stop
+              @click.stop="toggleVolume"
             >
               <Volume2 :size="14" />
             </button>
             <Transition name="pip-volume-slide">
               <div
-                v-if="isVolumeHovered"
+                v-if="isVolumeOpen"
                 class="pip-volume-slider"
+                @mousedown.stop
+                @click.stop
               >
                 <input
                   type="range"
@@ -260,6 +244,8 @@ const timeDisplay = computed(() => {
                   :value="playerStore.volume"
                   class="pip-volume-input"
                   @input="handleVolumeChange"
+                  @mousedown.stop
+                  @pointerdown.stop
                   @click.stop
                 />
               </div>
@@ -341,11 +327,54 @@ const timeDisplay = computed(() => {
   border: 1.5px solid rgba(232, 232, 240, 0.15);
 }
 
+.pip-thumbnail__wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .pip-thumbnail__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 0.3s ease;
+}
+
+.pip-thumbnail__img--loading {
+  opacity: 0;
+}
+
+/* Thumbnail shimmer */
+.pip-thumbnail__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1a1b35 0%, #141529 100%);
+  overflow: hidden;
+  z-index: 1;
+}
+
+.pip-thumbnail__shimmer-wave {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(155, 155, 180, 0.08) 40%,
+    rgba(155, 155, 180, 0.15) 50%,
+    rgba(155, 155, 180, 0.08) 60%,
+    transparent 100%
+  );
+  animation: pipShimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes pipShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .pip-thumbnail__fallback {
@@ -354,6 +383,52 @@ const timeDisplay = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Cover art crossfade transition */
+.pip-cover-crossfade-enter-active {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pip-cover-crossfade-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pip-cover-crossfade-enter-from,
+.pip-cover-crossfade-leave-to {
+  opacity: 0;
+}
+
+.pip-cover-crossfade-enter-to,
+.pip-cover-crossfade-leave-from {
+  opacity: 1;
+}
+
+/* Song info slide-in from right transition */
+.pip-info-slide-enter-active {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pip-info-slide-leave-active {
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pip-info-slide-enter-from {
+  opacity: 0;
+  transform: translateX(12px);
+}
+
+.pip-info-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+.pip-info-slide-enter-to,
+.pip-info-slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 /* Song info */

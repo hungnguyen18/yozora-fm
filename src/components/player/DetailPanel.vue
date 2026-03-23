@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { GENRE_COLOR_MAP } from '@/types';
@@ -17,6 +17,24 @@ const galaxyStore = useGalaxyStore();
 
 const song = computed(() => playerStore.currentSong);
 const isOpen = computed(() => galaxyStore.selectedSongId !== null && song.value !== null);
+
+// Track song ID for transition keying
+const songTransitionKey = computed(() => song.value?.id ?? 0);
+
+// Hero image loading state for shimmer placeholder
+const isHeroLoading = ref(true);
+
+const onHeroImageLoad = () => {
+  isHeroLoading.value = false;
+};
+
+// Reset loading state when song changes
+watch(
+  () => song.value?.id,
+  () => {
+    isHeroLoading.value = true;
+  },
+);
 
 // Genre color for glow effects
 const genreColor = computed(() => {
@@ -94,111 +112,125 @@ const onViewConstellation = () => {
         <X :size="18" />
       </button>
 
-      <!-- Hero image area -->
-      <div class="hero-area">
-        <img
-          v-if="heroImageUrl"
-          :src="heroImageUrl"
-          :alt="song?.anime?.title ?? song?.title ?? 'Cover art'"
-          class="hero-image"
-        />
-        <div
-          v-else
-          class="hero-gradient"
-          :style="heroGradientStyle"
-        >
-          <div class="hero-gradient__inner">
+      <!-- Song content — transitions on song change -->
+      <Transition name="song-change" mode="out-in">
+        <div :key="songTransitionKey" class="song-content">
+          <!-- Hero image area -->
+          <div class="hero-area">
+            <!-- Shimmer placeholder while image loads -->
             <div
-              class="hero-gradient__orb"
-              :style="{ background: `radial-gradient(circle, ${genreColor}40 0%, transparent 70%)` }"
+              v-if="heroImageUrl && isHeroLoading"
+              class="hero-shimmer"
+            >
+              <div class="hero-shimmer__wave" />
+            </div>
+            <img
+              v-if="heroImageUrl"
+              :src="heroImageUrl"
+              :alt="song?.anime?.title ?? song?.title ?? 'Cover art'"
+              class="hero-image"
+              :class="{ 'hero-image--loading': isHeroLoading }"
+              @load="onHeroImageLoad"
+            />
+            <div
+              v-if="!heroImageUrl"
+              class="hero-gradient"
+              :style="heroGradientStyle"
+            >
+              <div class="hero-gradient__inner">
+                <div
+                  class="hero-gradient__orb"
+                  :style="{ background: `radial-gradient(circle, ${genreColor}40 0%, transparent 70%)` }"
+                />
+              </div>
+            </div>
+            <div class="hero-overlay" />
+          </div>
+
+          <!-- Video area — AnimeThemes WebM / YouTube fallback / external link card -->
+          <div class="video-area">
+            <VideoPlayer
+              v-if="song?.animethemes_slug"
+              :song="song"
+              :genre-color="genreColor"
+            />
+            <YouTubeFallback
+              v-else-if="song?.youtube_id"
+              :youtube-id="song.youtube_id"
+            />
+            <ExternalLinkCard
+              v-else
+              :song="song"
+              :genre-color="genreColor"
             />
           </div>
+
+          <!-- Auto-play toggle — sits between the video area and the panel body -->
+          <div class="autoplay-row">
+            <label class="autoplay-label" for="autoplay-toggle">Auto-play</label>
+            <button
+              id="autoplay-toggle"
+              class="autoplay-switch"
+              :class="{ 'autoplay-switch--on': playerStore.autoPlay }"
+              role="switch"
+              :aria-checked="playerStore.autoPlay"
+              @click="playerStore.setAutoPlay(!playerStore.autoPlay)"
+            >
+              <span class="autoplay-switch__thumb" />
+            </button>
+          </div>
+
+          <!-- Panel body -->
+          <div class="panel-body">
+            <!-- Song info -->
+            <div v-if="song" class="song-info">
+              <h2 class="song-info__title">{{ song.title }}</h2>
+              <p v-if="song.title_jp" class="song-info__title-jp">{{ song.title_jp }}</p>
+              <p class="song-info__artist">{{ song.artist?.name ?? `Artist #${song.artist_id}` }}</p>
+              <p class="song-info__anime">
+                {{ song.anime?.title ?? `Anime #${song.anime_id}` }}
+                <span v-if="song.year" class="song-info__year">({{ song.year }})</span>
+              </p>
+            </div>
+
+            <!-- OP/ED badge + Genre tags row -->
+            <div class="meta-row">
+              <span
+                v-if="sequenceBadge"
+                class="op-ed-badge"
+                :style="{ borderColor: genreColor, color: genreColor }"
+              >{{ sequenceBadge }}</span>
+
+              <button
+                v-for="tag in genreTags"
+                :key="tag"
+                class="genre-tag"
+                :style="{
+                  backgroundColor: `${GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other}15`,
+                  color: GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other,
+                  borderColor: `${GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other}50`,
+                }"
+                @click="onGenreClick(tag)"
+              >
+                {{ tag }}
+              </button>
+            </div>
+
+            <!-- View artist constellation -->
+            <button class="constellation-btn" @click="onViewConstellation">
+              <Orbit :size="14" />
+              <span>View artist constellation</span>
+            </button>
+
+            <!-- Community section -->
+            <div v-if="song" class="community-section">
+              <VoteButton :song-id="song.id" />
+              <TriviaSection :song-id="song.id" />
+              <CommentList :song-id="song.id" />
+            </div>
+          </div>
         </div>
-        <div class="hero-overlay" />
-      </div>
-
-      <!-- Video area — AnimeThemes WebM / YouTube fallback / external link card -->
-      <div class="video-area">
-        <VideoPlayer
-          v-if="song?.animethemes_slug"
-          :song="song"
-          :genre-color="genreColor"
-        />
-        <YouTubeFallback
-          v-else-if="song?.youtube_id"
-          :youtube-id="song.youtube_id"
-        />
-        <ExternalLinkCard
-          v-else
-          :song="song"
-          :genre-color="genreColor"
-        />
-      </div>
-
-      <!-- Auto-play toggle — sits between the video area and the panel body -->
-      <div class="autoplay-row">
-        <label class="autoplay-label" for="autoplay-toggle">Auto-play</label>
-        <button
-          id="autoplay-toggle"
-          class="autoplay-switch"
-          :class="{ 'autoplay-switch--on': playerStore.autoPlay }"
-          role="switch"
-          :aria-checked="playerStore.autoPlay"
-          @click="playerStore.setAutoPlay(!playerStore.autoPlay)"
-        >
-          <span class="autoplay-switch__thumb" />
-        </button>
-      </div>
-
-      <!-- Panel body -->
-      <div class="panel-body">
-        <!-- Song info -->
-        <div v-if="song" class="song-info">
-          <h2 class="song-info__title">{{ song.title }}</h2>
-          <p v-if="song.title_jp" class="song-info__title-jp">{{ song.title_jp }}</p>
-          <p class="song-info__artist">{{ song.artist?.name ?? `Artist #${song.artist_id}` }}</p>
-          <p class="song-info__anime">
-            {{ song.anime?.title ?? `Anime #${song.anime_id}` }}
-            <span v-if="song.year" class="song-info__year">({{ song.year }})</span>
-          </p>
-        </div>
-
-        <!-- OP/ED badge + Genre tags row -->
-        <div class="meta-row">
-          <span
-            v-if="sequenceBadge"
-            class="op-ed-badge"
-            :style="{ borderColor: genreColor, color: genreColor }"
-          >{{ sequenceBadge }}</span>
-
-          <button
-            v-for="tag in genreTags"
-            :key="tag"
-            class="genre-tag"
-            :style="{
-              backgroundColor: `${GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other}15`,
-              color: GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other,
-              borderColor: `${GENRE_COLOR_MAP[tag as TGenre] ?? GENRE_COLOR_MAP.other}50`,
-            }"
-            @click="onGenreClick(tag)"
-          >
-            {{ tag }}
-          </button>
-        </div>
-
-        <!-- View artist constellation -->
-        <button class="constellation-btn" @click="onViewConstellation">
-          <Orbit :size="14" />
-          <span>View artist constellation</span>
-        </button>
-
-        <!-- Community section -->
-        <div v-if="song" class="community-section">
-          <VoteButton :song-id="song.id" />
-          <TriviaSection :song-id="song.id" />
-          <CommentList :song-id="song.id" />
-        </div>
-      </div>
+      </Transition>
     </div>
   </Transition>
 </template>
@@ -218,7 +250,14 @@ const onViewConstellation = () => {
   z-index: 50;
 }
 
-/* Slide transition */
+/* Song content wrapper for transition keying */
+.song-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Panel slide in/out transition */
 .panel-slide-enter-active,
 .panel-slide-leave-active {
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -232,6 +271,70 @@ const onViewConstellation = () => {
 .panel-slide-enter-to,
 .panel-slide-leave-from {
   transform: translateX(0);
+}
+
+/* Song change transition — fade + slide up */
+.song-change-enter-active {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.song-change-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.song-change-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.song-change-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.song-change-enter-to,
+.song-change-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hero image shimmer placeholder */
+.hero-shimmer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(160deg, #1a1b35 0%, #141529 50%, #1a1b35 100%);
+  overflow: hidden;
+}
+
+.hero-shimmer__wave {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(155, 155, 180, 0.06) 20%,
+    rgba(155, 155, 180, 0.12) 50%,
+    rgba(155, 155, 180, 0.06) 80%,
+    transparent 100%
+  );
+  animation: shimmerWave 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmerWave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Hide image while loading (shimmer shows instead) */
+.hero-image--loading {
+  opacity: 0;
 }
 
 /* Close button */
@@ -271,6 +374,7 @@ const onViewConstellation = () => {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 0.4s ease;
 }
 
 .hero-gradient {

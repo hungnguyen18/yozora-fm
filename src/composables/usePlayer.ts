@@ -1,4 +1,4 @@
-import { ref, watch } from "vue";
+import { ref, watch, type Ref } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import type { ISong } from "@/types";
 
@@ -7,6 +7,17 @@ const videoA = ref<HTMLVideoElement | null>(null);
 const videoB = ref<HTMLVideoElement | null>(null);
 const activeVideo = ref<"A" | "B">("A");
 const isLoading = ref(false);
+
+// Bounding rect of the VideoPlayer container — set by VideoPlayer, read by App.vue
+// When non-null, App.vue positions the video elements over this rect.
+// When null (panel closed), videos shrink to zero (audio continues).
+export type TVideoContainerRect = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+const videoContainerRect: Ref<TVideoContainerRect | null> = ref(null);
 
 let watcherInstalled = false;
 // Pending song to play once the video element becomes available
@@ -217,6 +228,7 @@ export const usePlayer = () => {
     videoB,
     activeVideo,
     isLoading,
+    videoContainerRect,
     play,
     crossfadeTo,
     pause,

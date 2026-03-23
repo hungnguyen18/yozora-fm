@@ -16,50 +16,8 @@ const props = withDefaults(defineProps<TVideoPlayerProps>(), {
 });
 
 const playerStore = usePlayerStore();
-const { videoA, videoB, activeVideo, isLoading, pause, resume, setVolume, setupProgressTracking, getVideoUrl } =
+const { videoA, videoB, activeVideo, isLoading, videoContainerRect, pause, resume, setVolume, setupProgressTracking } =
   usePlayer();
-
-// Visual mirror video — muted, syncs with the hidden audio video in App.vue
-const mirrorVideo = ref<HTMLVideoElement | null>(null);
-
-const syncMirror = () => {
-  const audioEl = activeVideo.value === 'A' ? videoA.value : videoB.value;
-  const mirror = mirrorVideo.value;
-  if (!audioEl || !mirror) { return; }
-
-  // Sync source
-  if (mirror.src !== audioEl.src && audioEl.src) {
-    mirror.src = audioEl.src;
-    mirror.currentTime = audioEl.currentTime;
-    mirror.play().catch(() => {});
-  }
-
-  // Sync play state
-  if (!audioEl.paused && mirror.paused) {
-    mirror.play().catch(() => {});
-  } else if (audioEl.paused && !mirror.paused) {
-    mirror.pause();
-  }
-
-  // Sync time if drifted > 0.3s
-  if (Math.abs(mirror.currentTime - audioEl.currentTime) > 0.3) {
-    mirror.currentTime = audioEl.currentTime;
-  }
-};
-
-// Sync mirror on mount and when song changes
-watch([videoA, videoB, activeVideo], () => syncMirror(), { immediate: true });
-
-// Periodic sync every 500ms while mounted
-let syncInterval: ReturnType<typeof setInterval> | null = null;
-onMounted(() => {
-  syncInterval = setInterval(syncMirror, 500);
-  // Initial sync after a tick
-  setTimeout(syncMirror, 100);
-});
-onUnmounted(() => {
-  if (syncInterval) { clearInterval(syncInterval); }
-});
 
 // Controls visibility state
 const isControlsVisible = ref(false);
@@ -95,6 +53,23 @@ const posterGradientStyle = computed(() => {
     background: `linear-gradient(135deg, ${color}25 0%, #0a0b1a 50%, ${color}10 100%)`,
   };
 });
+
+// Report container bounding rect so App.vue can position the singleton videos
+let resizeObserver: ResizeObserver | null = null;
+
+const updateContainerRect = (): void => {
+  const el = containerRef.value;
+  if (!el) {
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  videoContainerRect.value = {
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+  };
+};
 
 const showControls = (): void => {
   isControlsVisible.value = true;
@@ -158,6 +133,8 @@ const toggleFullscreen = (): void => {
 
 const onFullscreenChange = (): void => {
   isFullscreen.value = Boolean(document.fullscreenElement);
+  // Update rect after fullscreen change
+  setTimeout(updateContainerRect, 100);
 };
 
 // Sync local progress from active video element
@@ -192,6 +169,18 @@ onMounted(() => {
   if (videoB.value) {
     attachVideoListeners(videoB.value);
   }
+
+  // Observe container size and position changes
+  updateContainerRect();
+  if (containerRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      updateContainerRect();
+    });
+    resizeObserver.observe(containerRef.value);
+  }
+
+  // Also update on scroll (panel is scrollable)
+  window.addEventListener('scroll', updateContainerRect, true);
 });
 
 // Watch for refs becoming available (they may be null on first mount if v-if delays rendering)
@@ -209,9 +198,16 @@ watch(videoB, (el) => {
 
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', onFullscreenChange);
+  window.removeEventListener('scroll', updateContainerRect, true);
   if (hideControlsTimer.value !== null) {
     clearTimeout(hideControlsTimer.value);
   }
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  // Clear the rect so App.vue hides the videos
+  videoContainerRect.value = null;
 });
 </script>
 
@@ -275,14 +271,8 @@ onUnmounted(() => {
       </div>
     </Transition>
 
-    <!-- Visual mirror video — muted, syncs with the hidden audio video -->
-    <video
-      v-if="hasVideo"
-      ref="mirrorVideo"
-      class="video-player__mirror"
-      muted
-      playsinline
-    />
+    <!-- The actual video is rendered by App.vue and positioned over this container via videoContainerRect.
+         No mirror video needed — the singleton videos are repositioned here. -->
 
     <!-- Controls overlay -->
     <div
@@ -358,16 +348,6 @@ onUnmounted(() => {
   border-radius: 12px;
   aspect-ratio: 16 / 9;
   background-color: #0a0b1a;
-}
-
-/* Visual mirror video — synced with the hidden audio video */
-.video-player__mirror {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 3;
 }
 
 /* Blurred backdrop */
@@ -458,22 +438,6 @@ onUnmounted(() => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-/* Video elements */
-.video-player__video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 3;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-.video-player__video--active {
-  opacity: 1;
 }
 
 /* Controls overlay */

@@ -168,17 +168,36 @@ export const useGalaxyStore = defineStore("galaxy", {
       this.trailProgress = 0;
       this.isTrailActive = true;
 
-      // Animate trailProgress from 0 → 1 over ~1.5 seconds
+      // Animate trailProgress from 0 → 1 over ~1.5 seconds with ease-in-out
       const TRAIL_DURATION_MS = 1500;
       const startTime = performance.now();
 
+      // Smooth ease-in-out cubic for cinematic camera movement
+      const easeInOutCubic = (t: number): number => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+
+      // Animate camera pan smoothly from current position to target
+      const startPanX = this.panX;
+      const startPanY = this.panY;
+
       const animateTrail = () => {
         const elapsed = performance.now() - startTime;
-        this.trailProgress = Math.min(elapsed / TRAIL_DURATION_MS, 1);
+        const linearProgress = Math.min(elapsed / TRAIL_DURATION_MS, 1);
+        const easedProgress = easeInOutCubic(linearProgress);
 
-        if (this.trailProgress < 1) {
+        this.trailProgress = easedProgress;
+
+        // Smoothly interpolate camera pan position
+        this.panX = startPanX + (target.x - startPanX) * easedProgress;
+        this.panY = startPanY + (target.y - startPanY) * easedProgress;
+
+        if (linearProgress < 1) {
           requestAnimationFrame(animateTrail);
         } else {
+          // Ensure final position is exact
+          this.panX = target.x;
+          this.panY = target.y;
           // Leave isTrailActive true briefly so StarField can finish fading stars back
           setTimeout(() => {
             this.isTrailActive = false;
@@ -191,13 +210,8 @@ export const useGalaxyStore = defineStore("galaxy", {
 
       requestAnimationFrame(animateTrail);
 
-      // Move camera pan to center on the target star.
-      // The galaxy canvas reads panX/panY to translate the viewport.
-      this.panX = target.x;
-      this.panY = target.y;
       this.selectedSongId = songId;
-      // Smooth animation is delegated to the galaxy canvas via the reactive panX/panY,
-      // which the camera controller interpolates with requestAnimationFrame each frame.
+      // Camera pan is now animated frame-by-frame above instead of snapping instantly.
     },
 
     setZoomLevel(zoom: number) {
