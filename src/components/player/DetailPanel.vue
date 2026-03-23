@@ -112,6 +112,25 @@ const onViewConstellation = () => {
         <X :size="18" />
       </button>
 
+      <!-- Video area — lives OUTSIDE the song-change transition so the
+           video elements are never destroyed/recreated on song change -->
+      <div class="video-area">
+        <VideoPlayer
+          v-if="song?.animethemes_slug"
+          :song="song"
+          :genre-color="genreColor"
+        />
+        <YouTubeFallback
+          v-else-if="song?.youtube_id"
+          :youtube-id="song.youtube_id"
+        />
+        <ExternalLinkCard
+          v-else
+          :song="song"
+          :genre-color="genreColor"
+        />
+      </div>
+
       <!-- Song content — transitions on song change -->
       <Transition name="song-change" mode="out-in">
         <div :key="songTransitionKey" class="song-content">
@@ -145,24 +164,6 @@ const onViewConstellation = () => {
               </div>
             </div>
             <div class="hero-overlay" />
-          </div>
-
-          <!-- Video area — AnimeThemes WebM / YouTube fallback / external link card -->
-          <div class="video-area">
-            <VideoPlayer
-              v-if="song?.animethemes_slug"
-              :song="song"
-              :genre-color="genreColor"
-            />
-            <YouTubeFallback
-              v-else-if="song?.youtube_id"
-              :youtube-id="song.youtube_id"
-            />
-            <ExternalLinkCard
-              v-else
-              :song="song"
-              :genre-color="genreColor"
-            />
           </div>
 
           <!-- Auto-play toggle — sits between the video area and the panel body -->

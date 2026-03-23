@@ -25,93 +25,10 @@ const galaxyStore = useGalaxyStore();
 
 useKeyboardNav();
 
-
-
-
-// Initialize player with persistent video elements.
-// These refs are module-level singletons — binding them in App.vue
-// ensures the <video> elements are always in the DOM, surviving
-// DetailPanel mount/unmount cycles.
-const { videoA, videoB, activeVideo, isCrossfading, videoContainerRect, setupProgressTracking } = usePlayer();
-
-// Attach progress tracking once video elements are available
-const onVideoAReady = (el: HTMLVideoElement | null) => {
-  if (el) { setupProgressTracking(el); }
-};
-const onVideoBReady = (el: HTMLVideoElement | null) => {
-  if (el) { setupProgressTracking(el); }
-};
-
-// Style when no container rect — videos are off-screen but still in DOM
-const videoHiddenStyle = {
-  position: 'fixed' as const,
-  width: '0px',
-  height: '0px',
-  opacity: '0',
-  pointerEvents: 'none' as const,
-};
-
-// Compute video styles.  Both videos are ALWAYS positioned at the container rect
-// (when available) so the browser decodes frames even for the inactive one.
-// Visibility is controlled via opacity — during crossfade, both are visible
-// with CSS transition handling the smooth visual crossfade.
-const videoAStyle = computed(() => {
-  const rect = videoContainerRect.value;
-  if (!rect) {
-    return videoHiddenStyle;
-  }
-  const isActive = activeVideo.value === 'A';
-  const crossfading = isCrossfading.value;
-  // During crossfade: active (outgoing) fades out, inactive (incoming) fades in
-  // Normal: active visible, inactive hidden
-  let opacity: string;
-  if (crossfading) {
-    opacity = isActive ? '0' : '1';
-  } else {
-    opacity = isActive ? '1' : '0';
-  }
-  return {
-    position: 'fixed' as const,
-    top: `${rect.top}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    opacity,
-    pointerEvents: 'none' as const,
-    zIndex: isActive ? '53' : '52',
-    objectFit: 'cover' as const,
-    borderRadius: '12px',
-    transition: crossfading ? 'opacity 2s ease' : 'opacity 0.3s ease',
-  };
-});
-
-const videoBStyle = computed(() => {
-  const rect = videoContainerRect.value;
-  if (!rect) {
-    return videoHiddenStyle;
-  }
-  const isActive = activeVideo.value === 'B';
-  const crossfading = isCrossfading.value;
-  let opacity: string;
-  if (crossfading) {
-    opacity = isActive ? '0' : '1';
-  } else {
-    opacity = isActive ? '1' : '0';
-  }
-  return {
-    position: 'fixed' as const,
-    top: `${rect.top}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    opacity,
-    pointerEvents: 'none' as const,
-    zIndex: isActive ? '53' : '52',
-    objectFit: 'cover' as const,
-    borderRadius: '12px',
-    transition: crossfading ? 'opacity 2s ease' : 'opacity 0.3s ease',
-  };
-});
+// Initialize the player composable — creates singleton video elements.
+// Video elements are managed programmatically (not in this template).
+// They live in a hidden container and are moved into VideoPlayer when it mounts.
+usePlayer();
 
 const isLoading = computed(() => songsStore.isLoading);
 
@@ -153,23 +70,6 @@ onMounted(async () => {
 <template>
   <div class="w-screen h-screen overflow-hidden bg-[#0A0B1A] relative">
     <LoadingScreen :is-loading="isLoading" />
-
-    <!-- Persistent video elements — always in DOM, never removed.
-         When the detail panel's VideoPlayer is mounted, these are positioned
-         over its container area so the video is visible.
-         When the panel is closed, they shrink to zero (audio continues). -->
-    <video
-      :ref="(el) => { if (el) { videoA = el; onVideoAReady(el); } }"
-      :style="videoAStyle"
-      preload="auto"
-      playsinline
-    />
-    <video
-      :ref="(el) => { if (el) { videoB = el; onVideoBReady(el); } }"
-      :style="videoBStyle"
-      preload="auto"
-      playsinline
-    />
 
     <GalaxyScene @pointerdown="dismissOnboarding" @wheel="dismissOnboarding" />
     <DetailPanel />

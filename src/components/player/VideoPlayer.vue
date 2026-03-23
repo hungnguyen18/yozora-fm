@@ -16,8 +16,18 @@ const props = withDefaults(defineProps<TVideoPlayerProps>(), {
 });
 
 const playerStore = usePlayerStore();
-const { videoA, videoB, activeVideo, isLoading, isCrossfading, videoContainerRect, pause, resume, setVolume, setupProgressTracking } =
-  usePlayer();
+const {
+  videoA,
+  videoB,
+  activeVideo,
+  isLoading,
+  isCrossfading,
+  pause,
+  resume,
+  setVolume,
+  mountVideos,
+  unmountVideos,
+} = usePlayer();
 
 // Controls visibility state
 const isControlsVisible = ref(false);
@@ -29,7 +39,10 @@ const volume = ref(playerStore.volume);
 const progress = ref(playerStore.progress);
 const isFullscreen = ref(false);
 
+// Container for the video player wrapper
 const containerRef = ref<HTMLDivElement | null>(null);
+// Container where video elements are inserted programmatically
+const videoSlotRef = ref<HTMLDivElement | null>(null);
 
 const hasVideo = computed(() => {
   return props.song !== null && Boolean(props.song.animethemes_slug);
@@ -53,23 +66,6 @@ const posterGradientStyle = computed(() => {
     background: `linear-gradient(135deg, ${color}25 0%, #0a0b1a 50%, ${color}10 100%)`,
   };
 });
-
-// Report container bounding rect so App.vue can position the singleton videos
-let resizeObserver: ResizeObserver | null = null;
-
-const updateContainerRect = (): void => {
-  const el = containerRef.value;
-  if (!el) {
-    return;
-  }
-  const rect = el.getBoundingClientRect();
-  videoContainerRect.value = {
-    top: rect.top,
-    left: rect.left,
-    width: rect.width,
-    height: rect.height,
-  };
-};
 
 const showControls = (): void => {
   isControlsVisible.value = true;
@@ -133,8 +129,6 @@ const toggleFullscreen = (): void => {
 
 const onFullscreenChange = (): void => {
   isFullscreen.value = Boolean(document.fullscreenElement);
-  // Update rect after fullscreen change
-  setTimeout(updateContainerRect, 100);
 };
 
 // Sync local progress from active video element
@@ -153,75 +147,78 @@ const onVideoPause = (): void => {
   isPlaying.value = false;
 };
 
-const attachVideoListeners = (el: HTMLVideoElement): void => {
-  setupProgressTracking(el);
+// Attach UI-only listeners (progress display, play/pause sync)
+const attachListeners = (el: HTMLVideoElement): void => {
   el.addEventListener('timeupdate', onTimeUpdate);
   el.addEventListener('play', onVideoPlay);
   el.addEventListener('pause', onVideoPause);
 };
 
-onMounted(() => {
-  document.addEventListener('fullscreenchange', onFullscreenChange);
+const detachListeners = (el: HTMLVideoElement): void => {
+  el.removeEventListener('timeupdate', onTimeUpdate);
+  el.removeEventListener('play', onVideoPlay);
+  el.removeEventListener('pause', onVideoPause);
+};
 
-  if (videoA.value) {
-    attachVideoListeners(videoA.value);
-  }
-  if (videoB.value) {
-    attachVideoListeners(videoB.value);
-  }
-
-  // Observe container size and position changes
-  updateContainerRect();
-  if (containerRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      updateContainerRect();
-    });
-    resizeObserver.observe(containerRef.value);
-  }
-
-  // Also update on scroll (panel is scrollable) and resize
-  window.addEventListener('scroll', updateContainerRect, true);
-  window.addEventListener('resize', updateContainerRect);
-});
-
-// Sync isPlaying from store (e.g. after crossfade completes, next() called)
+// Sync isPlaying from store (after crossfade, next(), etc.)
 watch(() => playerStore.isPlaying, (playing) => {
   isPlaying.value = playing;
 });
 
-// Sync isLoading → reset progress display when a new song starts loading
+// Reset progress when loading a new song
 watch(isLoading, (loading) => {
   if (loading) {
     progress.value = 0;
   }
 });
 
-// Watch for refs becoming available (they may be null on first mount if v-if delays rendering)
+onMounted(() => {
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+
+  // Move video elements into this component's container
+  if (videoSlotRef.value) {
+    mountVideos(videoSlotRef.value);
+  }
+
+  // Attach UI listeners
+  if (videoA.value) {
+    attachListeners(videoA.value);
+  }
+  if (videoB.value) {
+    attachListeners(videoB.value);
+  }
+});
+
+// Watch for video refs becoming available after mount
 watch(videoA, (el) => {
   if (el) {
-    attachVideoListeners(el);
+    attachListeners(el);
   }
 });
 
 watch(videoB, (el) => {
   if (el) {
-    attachVideoListeners(el);
+    attachListeners(el);
   }
 });
 
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', onFullscreenChange);
-  window.removeEventListener('scroll', updateContainerRect, true);
-  window.removeEventListener('resize', updateContainerRect);
+
   if (hideControlsTimer.value !== null) {
     clearTimeout(hideControlsTimer.value);
   }
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-    resizeObserver = null;
+
+  // Detach UI listeners
+  if (videoA.value) {
+    detachListeners(videoA.value);
   }
-  // Clear the rect so App.vue hides the videos
-  videoContainerRect.value = null;
+  if (videoB.value) {
+    detachListeners(videoB.value);
+  }
+
+  // Move video elements back to hidden container (audio continues)
+  unmountVideos();
 });
 </script>
 
@@ -249,7 +246,10 @@ onUnmounted(() => {
       />
     </div>
 
-    <!-- Cover art poster (visible when not playing OR while video is loading) -->
+    <!-- Video slot — programmatic video elements are inserted here -->
+    <div ref="videoSlotRef" class="video-player__video-slot" />
+
+    <!-- Cover art poster (visible when not playing or while video is loading) -->
     <Transition name="poster-fade">
       <div
         v-if="(!isPlaying || isLoading) && coverArtUrl"
@@ -284,9 +284,6 @@ onUnmounted(() => {
         <Loader2 :size="32" class="video-player__spinner" />
       </div>
     </Transition>
-
-    <!-- The actual video is rendered by App.vue and positioned over this container via videoContainerRect.
-         No mirror video needed — the singleton videos are repositioned here. -->
 
     <!-- Controls overlay -->
     <div
@@ -383,6 +380,15 @@ onUnmounted(() => {
 .video-player__backdrop-gradient {
   width: 100%;
   height: 100%;
+}
+
+/* Video slot — holds programmatic <video> elements */
+.video-player__video-slot {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 /* Poster overlay */

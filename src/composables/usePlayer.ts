@@ -1,35 +1,53 @@
-import { ref, watch, type Ref } from "vue";
+import { ref, watch } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import type { ISong } from "@/types";
 
-// Singleton refs shared across all components that call usePlayer()
+// ---------------------------------------------------------------------------
+// Singleton video elements — created once, never destroyed.
+// They live in a hidden container when no VideoPlayer is mounted (audio
+// continues).  VideoPlayer.onMounted moves them into its own DOM container;
+// VideoPlayer.onUnmounted moves them back.  No fixed positioning or
+// rect-tracking needed.
+// ---------------------------------------------------------------------------
+
 const videoA = ref<HTMLVideoElement | null>(null);
 const videoB = ref<HTMLVideoElement | null>(null);
 const activeVideo = ref<"A" | "B">("A");
 const isLoading = ref(false);
-// True while a crossfade animation is in progress — both videos must be visible
 const isCrossfading = ref(false);
 
-// Bounding rect of the VideoPlayer container — set by VideoPlayer, read by App.vue
-// When non-null, App.vue positions the video elements over this rect.
-// When null (panel closed), videos shrink to zero (audio continues).
-export type TVideoContainerRect = {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
+// Hidden off-screen container — audio keeps playing while elements are here.
+let hiddenContainer: HTMLDivElement | null = null;
+
+const getHiddenContainer = (): HTMLDivElement => {
+  if (!hiddenContainer) {
+    hiddenContainer = document.createElement("div");
+    hiddenContainer.style.cssText =
+      "position:fixed;width:0;height:0;overflow:hidden;pointer-events:none;opacity:0";
+    document.body.appendChild(hiddenContainer);
+  }
+  return hiddenContainer;
 };
-const videoContainerRect: Ref<TVideoContainerRect | null> = ref(null);
+
+const createVideoEl = (): HTMLVideoElement => {
+  const el = document.createElement("video");
+  el.preload = "auto";
+  el.playsInline = true;
+  // Inline styles so the element renders correctly wherever it is placed
+  el.style.cssText =
+    "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px";
+  return el;
+};
+
+// Track whether progress-tracking listeners have been attached
+let progressTrackingInstalled = false;
 
 let watcherInstalled = false;
-// Pending song to play once the video element becomes available
 let pendingSong: ISong | null = null;
-// Flag to skip the watcher when play() was called directly from a click handler
 let skipNextWatcherPlay = false;
-// Active crossfade RAF id — used to cancel an ongoing crossfade
 let crossfadeRafId = 0;
 
-// Remove all canplay/error listeners from a video element (cleanup helper)
+// Helper: clean up canplay/error listeners
 const cleanupVideoListeners = (
   el: HTMLVideoElement,
   onCanPlay?: () => void,
@@ -43,10 +61,121 @@ const cleanupVideoListeners = (
   }
 };
 
+// Update opacity / z-index on the two video elements based on current state.
+// Called whenever activeVideo or isCrossfading changes.
+const updateVideoVisibility = (): void => {
+  const a = videoA.value;
+  const b = videoB.value;
+  if (!a || !b) {
+    return;
+  }
+  const isAActive = activeVideo.value === "A";
+  if (isCrossfading.value) {
+    // During crossfade: outgoing fades out, incoming fades in
+    a.style.opacity = isAActive ? "0" : "1";
+    a.style.transition = "opacity 2s ease";
+    a.style.zIndex = isAActive ? "0" : "1";
+    b.style.opacity = isAActive ? "1" : "0";
+    b.style.transition = "opacity 2s ease";
+    b.style.zIndex = isAActive ? "0" : "1";
+  } else {
+    a.style.opacity = isAActive ? "1" : "0";
+    a.style.transition = "opacity 0.3s ease";
+    a.style.zIndex = isAActive ? "1" : "0";
+    b.style.opacity = isAActive ? "0" : "1";
+    b.style.transition = "opacity 0.3s ease";
+    b.style.zIndex = isAActive ? "1" : "0";
+  }
+};
+
 export const usePlayer = () => {
   const playerStore = usePlayerStore();
 
-  // Build WebM URL from animethemes_slug
+  // Create video elements on first call (singleton)
+  const ensureVideoElements = (): void => {
+    if (videoA.value && videoB.value) {
+      return;
+    }
+    const a = createVideoEl();
+    const b = createVideoEl();
+    getHiddenContainer().appendChild(a);
+    getHiddenContainer().appendChild(b);
+    videoA.value = a;
+    videoB.value = b;
+    updateVideoVisibility();
+
+    // Attach progress tracking once
+    if (!progressTrackingInstalled) {
+      progressTrackingInstalled = true;
+      const trackProgress = (video: HTMLVideoElement): void => {
+        video.addEventListener("timeupdate", () => {
+          // Only track the active video
+          const active =
+            activeVideo.value === "A" ? videoA.value : videoB.value;
+          if (video === active && video.duration) {
+            playerStore.setProgress(video.currentTime / video.duration);
+          }
+        });
+        video.addEventListener("ended", () => {
+          const active =
+            activeVideo.value === "A" ? videoA.value : videoB.value;
+          if (video !== active) {
+            return;
+          }
+          if (playerStore.autoPlay) {
+            playerStore.next();
+          } else {
+            playerStore.isPlaying = false;
+            playerStore.progress = 0;
+          }
+        });
+      };
+      trackProgress(a);
+      trackProgress(b);
+    }
+  };
+
+  // Ensure elements exist on every usePlayer() call
+  ensureVideoElements();
+
+  // -----------------------------------------------------------------------
+  // Public API: mount / unmount videos into a display container
+  // -----------------------------------------------------------------------
+
+  /** Move both video elements into `container` (called by VideoPlayer.onMounted) */
+  const mountVideos = (container: HTMLElement): void => {
+    ensureVideoElements();
+    if (videoA.value) {
+      container.appendChild(videoA.value);
+    }
+    if (videoB.value) {
+      container.appendChild(videoB.value);
+    }
+    updateVideoVisibility();
+
+    // If a song was pending (panel was mounting), play it now
+    if (pendingSong) {
+      const song = pendingSong;
+      pendingSong = null;
+      play(song);
+    }
+  };
+
+  /** Move both video elements back to hidden container (VideoPlayer.onUnmounted) */
+  const unmountVideos = (): void => {
+    const hidden = getHiddenContainer();
+    if (videoA.value && videoA.value.parentElement !== hidden) {
+      hidden.appendChild(videoA.value);
+    }
+    if (videoB.value && videoB.value.parentElement !== hidden) {
+      hidden.appendChild(videoB.value);
+    }
+  };
+
+  // -----------------------------------------------------------------------
+  // Playback
+  // -----------------------------------------------------------------------
+
   const getVideoUrl = (song: ISong): string | null => {
     if (!song.animethemes_slug) {
       return null;
@@ -62,14 +191,12 @@ export const usePlayer = () => {
     return activeVideo.value === "A" ? videoB.value : videoA.value;
   };
 
-  // Cancel any in-progress crossfade immediately
   const cancelCrossfade = (): void => {
     if (crossfadeRafId) {
       cancelAnimationFrame(crossfadeRafId);
       crossfadeRafId = 0;
     }
     if (isCrossfading.value) {
-      // Clean up: stop the inactive (was-incoming) video
       const inactive = getInactiveVideoEl();
       if (inactive && inactive.src) {
         inactive.pause();
@@ -77,19 +204,15 @@ export const usePlayer = () => {
         inactive.load();
       }
       isCrossfading.value = false;
+      updateVideoVisibility();
     }
   };
 
-  // Play a song on the currently active video element.
-  // If the video element isn't in the DOM yet (panel still mounting),
-  // save the song as pending — it will be played when the ref becomes non-null.
   const play = (song: ISong): void => {
     const url = getVideoUrl(song);
     if (!url) {
       return;
     }
-
-    // Cancel any ongoing crossfade first
     cancelCrossfade();
 
     const current = getActiveVideoEl();
@@ -103,7 +226,6 @@ export const usePlayer = () => {
     skipNextWatcherPlay = true;
     isLoading.value = true;
 
-    // Reset video state cleanly before loading new src
     current.pause();
     current.src = url;
     current.volume = playerStore.volume;
@@ -113,12 +235,10 @@ export const usePlayer = () => {
       isLoading.value = false;
       cleanupVideoListeners(current, onCanPlay, onError);
     };
-
     const onError = (): void => {
       isLoading.value = false;
       cleanupVideoListeners(current, onCanPlay, onError);
     };
-
     current.addEventListener("canplay", onCanPlay);
     current.addEventListener("error", onError);
 
@@ -130,16 +250,11 @@ export const usePlayer = () => {
     playerStore.isPlaying = true;
   };
 
-  // Crossfade from the current song to a new one over 2 seconds.
-  // Both videos are kept at full size during the crossfade — App.vue
-  // uses isCrossfading to show both, with CSS opacity transitions.
   const crossfadeTo = (song: ISong): void => {
     const url = getVideoUrl(song);
     if (!url) {
       return;
     }
-
-    // Cancel any previous crossfade
     cancelCrossfade();
 
     const outgoing = getActiveVideoEl();
@@ -147,6 +262,7 @@ export const usePlayer = () => {
 
     isLoading.value = true;
     isCrossfading.value = true;
+    updateVideoVisibility();
 
     if (incoming) {
       incoming.src = url;
@@ -157,12 +273,10 @@ export const usePlayer = () => {
         isLoading.value = false;
         cleanupVideoListeners(incoming, onCanPlay, onError);
       };
-
       const onError = (): void => {
         isLoading.value = false;
         cleanupVideoListeners(incoming, onCanPlay, onError);
       };
-
       incoming.addEventListener("canplay", onCanPlay);
       incoming.addEventListener("error", onError);
 
@@ -199,9 +313,9 @@ export const usePlayer = () => {
           outgoing.src = "";
           outgoing.load();
         }
-        // Swap active video slot
         activeVideo.value = activeVideo.value === "A" ? "B" : "A";
         isCrossfading.value = false;
+        updateVideoVisibility();
         playerStore.isPlaying = true;
       }
     };
@@ -233,39 +347,19 @@ export const usePlayer = () => {
     }
   };
 
-  // Wire up progress tracking and auto-next on a video element
-  const setupProgressTracking = (video: HTMLVideoElement): void => {
-    video.addEventListener("timeupdate", () => {
-      if (video.duration) {
-        playerStore.setProgress(video.currentTime / video.duration);
-      }
-    });
+  // -----------------------------------------------------------------------
+  // Singleton watchers
+  // -----------------------------------------------------------------------
 
-    video.addEventListener("ended", () => {
-      if (playerStore.autoPlay) {
-        playerStore.next();
-      } else {
-        playerStore.isPlaying = false;
-        playerStore.progress = 0;
-      }
-    });
-  };
-
-  // Install watchers only once (singleton pattern)
   if (!watcherInstalled) {
     watcherInstalled = true;
 
-    // Play pending song when video element becomes available
-    watch(videoA, (el) => {
-      if (el && pendingSong) {
-        const song = pendingSong;
-        pendingSong = null;
-        play(song);
-      }
+    // Update video visibility when active slot or crossfade state changes
+    watch([activeVideo, isCrossfading], () => {
+      updateVideoVisibility();
     });
 
-    // React to store-driven song changes (e.g. auto-play next).
-    // Skipped when play() was already called directly from click handler.
+    // React to store-driven song changes (auto-play next, etc.)
     watch(
       () => playerStore.currentSong,
       (newSong, oldSong) => {
@@ -284,7 +378,7 @@ export const usePlayer = () => {
       },
     );
 
-    // Mirror store isPlaying changes back to the DOM (e.g. external pause calls)
+    // Mirror store isPlaying → DOM
     watch(
       () => playerStore.isPlaying,
       (playing) => {
@@ -307,13 +401,12 @@ export const usePlayer = () => {
     activeVideo,
     isLoading,
     isCrossfading,
-    videoContainerRect,
     play,
     crossfadeTo,
     pause,
     resume,
     setVolume,
-    getVideoUrl,
-    setupProgressTracking,
+    mountVideos,
+    unmountVideos,
   };
 };
