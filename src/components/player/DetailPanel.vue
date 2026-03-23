@@ -7,6 +7,7 @@ import type { TGenre } from '@/types';
 import VideoPlayer from '@/components/player/VideoPlayer.vue';
 import YouTubeFallback from '@/components/player/YouTubeFallback.vue';
 import ExternalLinkCard from '@/components/player/ExternalLinkCard.vue';
+import VoteButton from '@/components/community/VoteButton.vue';
 
 const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
@@ -143,9 +144,9 @@ const onViewConstellation = () => {
           View artist constellation
         </button>
 
-        <!-- 6. Community section placeholder -->
-        <div class="community-placeholder">
-          Community features coming soon
+        <!-- 6. Community section — iconic vote -->
+        <div v-if="song" class="community-section">
+          <VoteButton :song-id="song.id" />
         </div>
       </div>
     </div>
@@ -351,14 +352,11 @@ const onViewConstellation = () => {
   transform: translateX(16px);
 }
 
-/* Community placeholder */
-.community-placeholder {
+/* Community section */
+.community-section {
   margin-top: 8px;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px dashed rgba(155, 155, 180, 0.25);
-  font-size: 0.875rem;
-  color: #9B9BB4;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 </style>
