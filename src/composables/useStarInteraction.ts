@@ -221,15 +221,15 @@ export const useStarInteraction = (
   };
 
   const onClick = (event: MouseEvent): void => {
-    // If a star is already hovered, use it directly (most accurate —
-    // hover detection already found the closest star to the cursor).
-    let instanceId = hoveredInstanceId.value;
-
-    if (instanceId === null || instanceId < 0) {
-      // Force-invalidate cache so click uses fresh projections
-      invalidateCache();
-      instanceId = findNearestStar(event.clientX, event.clientY, HIT_RADIUS_PX);
-    }
+    // Always do a fresh search on click — hover state may be stale
+    // (throttled, or enableHover was false). Invalidate cache to ensure
+    // projections match the current camera position exactly.
+    invalidateCache();
+    const instanceId = findNearestStar(
+      event.clientX,
+      event.clientY,
+      HIT_RADIUS_PX,
+    );
 
     if (instanceId >= 0) {
       const song = songsStore.listSong[instanceId];

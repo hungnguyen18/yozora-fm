@@ -17,12 +17,14 @@ export const useRouting = () => {
   const playerStore = usePlayerStore();
   const songsStore = useSongsStore();
 
-  // Push URL when selectedSongId changes
+  // Push URL when selectedSongId changes + close PiP when panel opens
   watch(
     () => galaxyStore.selectedSongId,
     (songId) => {
       const currentPath = window.location.pathname;
       if (songId !== null) {
+        // Close PiP when detail panel opens
+        playerStore.isPip = false;
         const target = `/song/${songId}`;
         if (currentPath !== target) {
           window.history.pushState({ songId }, "", target);

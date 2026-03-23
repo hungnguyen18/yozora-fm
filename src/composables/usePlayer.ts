@@ -132,6 +132,24 @@ export const usePlayer = () => {
       };
       trackProgress(a);
       trackProgress(b);
+
+      // Background-tab safety: browsers may not fire 'ended' when tab is
+      // hidden. Poll every 1s (minimum interval in background tabs) to
+      // catch videos that have reached their end.
+      setInterval(() => {
+        const active = activeVideo.value === "A" ? videoA.value : videoB.value;
+        if (!active || !active.duration || !playerStore.isPlaying) {
+          return;
+        }
+        if (active.ended || active.currentTime >= active.duration - 0.3) {
+          if (playerStore.autoPlay) {
+            playerStore.next();
+          } else {
+            playerStore.isPlaying = false;
+            playerStore.progress = 0;
+          }
+        }
+      }, 1000);
     }
   };
 
