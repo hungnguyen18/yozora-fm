@@ -19,6 +19,7 @@ import { useGalaxyStore } from '@/stores/galaxy';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
 import { usePlayer } from '@/composables/usePlayer';
 import { useRouting } from '@/composables/useRouting';
+import { usePageTitle } from '@/composables/usePageTitle';
 
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
@@ -27,6 +28,7 @@ const galaxyStore = useGalaxyStore();
 useKeyboardNav();
 usePlayer();
 useRouting();
+usePageTitle();
 
 const isLoading = computed(() => songsStore.isLoading);
 

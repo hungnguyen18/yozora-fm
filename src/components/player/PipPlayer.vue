@@ -103,7 +103,7 @@ const skipNext = (): void => {
 
 const expand = (): void => {
   if (song.value) {
-    galaxyStore.selectedSongId = song.value.id;
+    galaxyStore.flyToStar(song.value.id);
   }
   playerStore.isPip = false;
 };
