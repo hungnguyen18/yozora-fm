@@ -9,6 +9,8 @@ const activeVideo = ref<"A" | "B">("A");
 const isLoading = ref(false);
 
 let watcherInstalled = false;
+// Pending song to play once the video element becomes available
+let pendingSong: ISong | null = null;
 
 export const usePlayer = () => {
   const playerStore = usePlayerStore();
@@ -29,7 +31,9 @@ export const usePlayer = () => {
     return activeVideo.value === "A" ? videoB.value : videoA.value;
   };
 
-  // Play a song on the currently active video element
+  // Play a song on the currently active video element.
+  // If the video element isn't in the DOM yet (panel still mounting),
+  // save the song as pending — it will be played when the ref becomes non-null.
   const play = (song: ISong): void => {
     const url = getVideoUrl(song);
     if (!url) {
@@ -37,21 +41,26 @@ export const usePlayer = () => {
     }
 
     const current = getActiveVideoEl();
-    if (current) {
-      isLoading.value = true;
-      current.src = url;
-      current.volume = playerStore.volume;
-
-      const onCanPlay = (): void => {
-        isLoading.value = false;
-        current.removeEventListener("canplay", onCanPlay);
-      };
-      current.addEventListener("canplay", onCanPlay);
-
-      current.play().catch(() => {
-        isLoading.value = false;
-      });
+    if (!current) {
+      pendingSong = song;
+      playerStore.isPlaying = true;
+      return;
     }
+
+    pendingSong = null;
+    isLoading.value = true;
+    current.src = url;
+    current.volume = playerStore.volume;
+
+    const onCanPlay = (): void => {
+      isLoading.value = false;
+      current.removeEventListener("canplay", onCanPlay);
+    };
+    current.addEventListener("canplay", onCanPlay);
+
+    current.play().catch(() => {
+      isLoading.value = false;
+    });
 
     playerStore.isPlaying = true;
   };
@@ -161,6 +170,15 @@ export const usePlayer = () => {
   // Install watchers only once (singleton pattern)
   if (!watcherInstalled) {
     watcherInstalled = true;
+
+    // Play pending song when video element becomes available
+    watch(videoA, (el) => {
+      if (el && pendingSong) {
+        const song = pendingSong;
+        pendingSong = null;
+        play(song);
+      }
+    });
 
     // React to store-driven song changes (e.g. user clicks a star)
     watch(
