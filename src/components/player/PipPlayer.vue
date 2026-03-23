@@ -37,8 +37,8 @@ watch(
 // Draggable positioning — above the era dial bar at the bottom
 const pipRef = ref<HTMLElement | null>(null);
 const initialX = computed(() => Math.round(window.innerWidth / 2 - 200));
-// Era dial is ~70px tall at bottom: 1.75rem (~28px). PiP sits above it.
-const initialY = computed(() => window.innerHeight - 170);
+// PiP sits near the bottom with some padding
+const initialY = computed(() => window.innerHeight - 90);
 const { style: draggableStyle } = useDraggable(pipRef, {
   initialValue: { x: initialX.value, y: initialY.value },
 });
