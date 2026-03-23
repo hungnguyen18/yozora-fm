@@ -2,18 +2,24 @@
 // Primitive / scalar types
 // ---------------------------------------------------------------------------
 
-export type TSongType = 'OP' | 'ED';
+export type TSongType = "OP" | "ED";
 
-export type TSeason = 'winter' | 'spring' | 'summer' | 'fall';
+export type TSeason = "winter" | "spring" | "summer" | "fall";
 
-export type TTriviaStatus = 'pending' | 'approved' | 'reported';
+export type TTriviaStatus = "pending" | "approved" | "reported";
 
-export type TCommentStatus = 'visible' | 'reported';
+export type TCommentStatus = "visible" | "reported";
 
-export type TGenre = 'rock' | 'ballad' | 'electronic' | 'pop' | 'orchestral' | 'other';
+export type TGenre =
+  | "rock"
+  | "ballad"
+  | "electronic"
+  | "pop"
+  | "orchestral"
+  | "other";
 
 // LOD (Level of Detail) tier for galaxy rendering
-export type TLodTier = 'far' | 'mid' | 'close';
+export type TLodTier = "far" | "mid" | "close";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -21,12 +27,12 @@ export type TLodTier = 'far' | 'mid' | 'close';
 
 // Maps each genre to its representative star/label colour in the galaxy view
 export const GENRE_COLOR_MAP: Record<TGenre, string> = {
-  rock: '#F97316',       // red-orange
-  ballad: '#3B82F6',     // blue
-  electronic: '#A855F7', // purple
-  pop: '#EC4899',        // pink
-  orchestral: '#F59E0B', // gold
-  other: '#C0C0D0',      // white-silver
+  rock: "#F97316", // red-orange
+  ballad: "#3B82F6", // blue
+  electronic: "#A855F7", // purple
+  pop: "#EC4899", // pink
+  orchestral: "#F59E0B", // gold
+  other: "#C0C0D0", // white-silver
 };
 
 // ---------------------------------------------------------------------------
@@ -73,22 +79,22 @@ export interface ISong {
 }
 
 export interface IVote {
-  user_id: string;  // UUID
+  user_id: string; // UUID
   song_id: number;
   created_at: string;
 }
 
 export interface IUser {
-  id: string;       // UUID from Supabase Auth
+  id: string; // UUID from Supabase Auth
   nickname: string;
   avatarUrl: string;
-  provider: 'google' | 'github';
+  provider: "google" | "github";
 }
 
 export interface ITrivia {
   id: number;
   song_id: number;
-  user_id: string;  // UUID
+  user_id: string; // UUID
   content: string;
   upvote_count: number;
   report_count: number;
@@ -102,7 +108,7 @@ export interface ITrivia {
 export interface IComment {
   id: number;
   song_id: number;
-  user_id: string;  // UUID
+  user_id: string | null; // UUID — null for anonymous comments
   content: string;
   report_count: number;
   status: TCommentStatus;
@@ -113,7 +119,7 @@ export interface IComment {
 }
 
 export interface ITriviaUpvote {
-  user_id: string;  // UUID
+  user_id: string; // UUID
   trivia_id: number;
 }
 
@@ -125,14 +131,14 @@ export interface IStarPosition {
   x: number;
   y: number;
   z: number;
-  angle: number;   // θ in radians
-  radius: number;  // distance from the galaxy centre
+  angle: number; // θ in radians
+  radius: number; // distance from the galaxy centre
   songId: number;
 }
 
 export interface IEra {
-  decade: number;      // e.g. 1980, 1990
-  name: string;        // e.g. "The Golden Age of J-Rock"
+  decade: number; // e.g. 1980, 1990
+  name: string; // e.g. "The Golden Age of J-Rock"
   startYear: number;
   endYear: number;
 }

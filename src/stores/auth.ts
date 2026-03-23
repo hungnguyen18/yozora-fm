@@ -1,8 +1,8 @@
-import { defineStore } from 'pinia';
-import { supabase } from '@/lib/supabase';
-import type { IUser } from '@/types';
+import { defineStore } from "pinia";
+import { supabase } from "@/lib/supabase";
+import type { IUser } from "@/types";
 
-export const useAuthStore = defineStore('auth', {
+export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as IUser | null,
     isLoading: false,
@@ -12,11 +12,17 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     async signInWithGoogle() {
-      await supabase.auth.signInWithOAuth({ provider: 'google' });
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
     },
 
     async signInWithGithub() {
-      await supabase.auth.signInWithOAuth({ provider: 'github' });
+      await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: { redirectTo: window.location.origin },
+      });
     },
 
     async signOut() {
@@ -34,13 +40,18 @@ export const useAuthStore = defineStore('auth', {
         const sessionUser = data.session.user;
         this.user = {
           id: sessionUser.id,
-          nickname: (sessionUser.user_metadata?.['full_name'] as string | undefined)
-            ?? sessionUser.email
-            ?? 'Anonymous',
-          avatarUrl: (sessionUser.user_metadata?.['avatar_url'] as string | undefined) ?? '',
-          provider: ((sessionUser.app_metadata?.['provider'] as string | undefined) === 'github'
-            ? 'github'
-            : 'google') as 'google' | 'github',
+          nickname:
+            (sessionUser.user_metadata?.["full_name"] as string | undefined) ??
+            sessionUser.email ??
+            "Anonymous",
+          avatarUrl:
+            (sessionUser.user_metadata?.["avatar_url"] as string | undefined) ??
+            "",
+          provider: ((sessionUser.app_metadata?.["provider"] as
+            | string
+            | undefined) === "github"
+            ? "github"
+            : "google") as "google" | "github",
         };
       }
 
@@ -51,13 +62,18 @@ export const useAuthStore = defineStore('auth', {
           const authUser = session.user;
           this.user = {
             id: authUser.id,
-            nickname: (authUser.user_metadata?.['full_name'] as string | undefined)
-              ?? authUser.email
-              ?? 'Anonymous',
-            avatarUrl: (authUser.user_metadata?.['avatar_url'] as string | undefined) ?? '',
-            provider: ((authUser.app_metadata?.['provider'] as string | undefined) === 'github'
-              ? 'github'
-              : 'google') as 'google' | 'github',
+            nickname:
+              (authUser.user_metadata?.["full_name"] as string | undefined) ??
+              authUser.email ??
+              "Anonymous",
+            avatarUrl:
+              (authUser.user_metadata?.["avatar_url"] as string | undefined) ??
+              "",
+            provider: ((authUser.app_metadata?.["provider"] as
+              | string
+              | undefined) === "github"
+              ? "github"
+              : "google") as "google" | "github",
           };
         } else {
           this.user = null;

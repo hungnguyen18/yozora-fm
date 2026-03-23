@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { ref, watch } from 'vue';
+import { useDebounceFn, useEventListener } from '@vueuse/core';
 import { Search, X, Music, User, Tv } from 'lucide-vue-next';
 import { useSongsStore } from '@/stores/songs';
 import { useGalaxyStore } from '@/stores/galaxy';
@@ -77,8 +77,16 @@ const close = () => {
   listResult.value = [];
 };
 
+const isInsideEditable = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+};
+
 const onKeyDown = (e: KeyboardEvent) => {
-  if (e.key === '/' && !isExpanded.value) {
+  if (e.key === '/' && !isExpanded.value && !isInsideEditable(e.target)) {
     e.preventDefault();
     isExpanded.value = true;
   }
@@ -87,13 +95,7 @@ const onKeyDown = (e: KeyboardEvent) => {
   }
 };
 
-onMounted(() => {
-  window.addEventListener('keydown', onKeyDown);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', onKeyDown);
-});
+useEventListener(window, 'keydown', onKeyDown);
 </script>
 
 <template>

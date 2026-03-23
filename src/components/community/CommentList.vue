@@ -54,8 +54,11 @@ const handleReport = async (commentId: number) => {
   <div class="comment-list">
     <h3 class="comment-list__heading">Comments</h3>
 
-    <!-- Comment input — visible only when authenticated -->
+    <!-- Comment input — visible for all users (anonymous allowed) -->
     <div class="comment-form">
+      <p v-if="!authStore.isAuthenticated" class="comment-form__anon-hint">
+        Posting as Anonymous
+      </p>
       <textarea
         v-model="newContent"
         class="comment-form__textarea"
@@ -183,6 +186,13 @@ const handleReport = async (commentId: number) => {
   border: 1px solid rgba(155, 155, 180, 0.15);
   border-radius: 8px;
   padding: 10px;
+}
+
+.comment-form__anon-hint {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  color: #9B9BB4;
+  font-style: italic;
 }
 
 .comment-form__textarea {
