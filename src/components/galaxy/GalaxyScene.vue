@@ -6,6 +6,7 @@ import { ref, shallowRef, computed, watch } from 'vue';
 import * as THREE from 'three';
 import { TresCanvas } from '@tresjs/core';
 import type { TresContext } from '@tresjs/core';
+import { useWindowSize } from '@vueuse/core';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useStarInteraction } from '@/composables/useStarInteraction';
 import { useStarSpatialIndex } from '@/composables/useStarSpatialIndex';
@@ -39,9 +40,10 @@ watch(
   },
 );
 
-// Half dimensions for orthographic frustum (pixels, unscaled)
-const viewHalfWidth = computed(() => window.innerWidth / 2);
-const viewHalfHeight = computed(() => window.innerHeight / 2);
+// Reactive window dimensions for responsive orthographic frustum
+const { width: windowWidth, height: windowHeight } = useWindowSize();
+const viewHalfWidth = computed(() => windowWidth.value / 2);
+const viewHalfHeight = computed(() => windowHeight.value / 2);
 
 // Pan drag tracking
 const isDragging = ref(false);

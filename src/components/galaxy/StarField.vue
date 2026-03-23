@@ -10,6 +10,7 @@ import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
 import { useLOD } from '@/composables/useLOD';
+import { useStarSpatialIndex } from '@/composables/useStarSpatialIndex';
 
 const songsStore = useSongsStore();
 const playerStore = usePlayerStore();
@@ -17,6 +18,11 @@ const galaxyStore = useGalaxyStore();
 const { computeBuffers } = useGalaxyLayout();
 const { showLabels, labelVoteThreshold, labelMaxCount } = useLOD();
 const { scene } = useTresContext();
+const trailSpatialIndex = useStarSpatialIndex();
+
+// Set of star indices currently affected by the trail (brightened or fading).
+// Only these are iterated each frame for the fade pass, instead of all 9111 stars.
+const activeTrailStars = new Set<number>();
 
 const instancedMesh = shallowRef<THREE.InstancedMesh | null>(null);
 
@@ -278,6 +284,14 @@ watch(instancedMesh, (mesh) => {
   const count = mesh.count;
   trailBrightness = new Float32Array(count);
   trailPassTime = new Float32Array(count).fill(-1);
+  activeTrailStars.clear();
+});
+
+// Build trail spatial index when world positions become available
+watch(listStarWorldPosition, (positions) => {
+  if (positions.length > 0) {
+    trailSpatialIndex.build(positions);
+  }
 });
 
 const { onBeforeRender } = useLoop();
@@ -329,9 +343,7 @@ onBeforeRender(({ delta }) => {
     lastAppliedZoom = currentZoom;
   }
 
-  const worldPositions = listStarWorldPosition.value;
   const baseColors = listBaseColor.value;
-  const count = mesh.count;
 
   // Determine current trail head position via lerp when trail is active
   let trailHeadX = 0;
@@ -346,49 +358,45 @@ onBeforeRender(({ delta }) => {
   }
 
   let needsUpdate = false;
-  const radiusSq = TRAIL_RADIUS * TRAIL_RADIUS;
 
-  for (let i = 0; i < count; i += 1) {
-    const worldPos = worldPositions[i];
-    if (!worldPos) { continue; }
-
-    // Check if trail head is near this star and mark it as brightened
-    if (trailActive) {
-      const dx = worldPos.x - trailHeadX;
-      const dy = worldPos.y - trailHeadY;
-      if (dx * dx + dy * dy <= radiusSq) {
-        trailBrightness[i] = 1;
-        trailPassTime[i] = 0;
-      }
+  // Use spatial index to find stars near the trail head — avoids iterating all 9111 stars
+  if (trailActive) {
+    const listNearbyIndex = trailSpatialIndex.queryNear(trailHeadX, trailHeadY, TRAIL_RADIUS);
+    for (let k = 0; k < listNearbyIndex.length; k += 1) {
+      const i = listNearbyIndex[k];
+      trailBrightness[i] = 1;
+      trailPassTime[i] = 0;
+      activeTrailStars.add(i);
     }
+  }
 
-    // Fade brightness back to 0 after the trail has passed
-    if (trailPassTime[i] >= 0) {
-      trailPassTime[i] += delta;
-      const fade = 1 - Math.min(trailPassTime[i] / TRAIL_FADE_DURATION, 1);
-      trailBrightness[i] = fade;
+  // Fade pass: only iterate stars that are currently brightened by the trail
+  for (const i of activeTrailStars) {
+    trailPassTime[i] += delta;
+    const fade = 1 - Math.min(trailPassTime[i] / TRAIL_FADE_DURATION, 1);
+    trailBrightness[i] = fade;
 
-      const base = baseColors[i];
-      if (!base) { continue; }
+    const base = baseColors[i];
+    if (!base) { continue; }
 
-      // Lerp from base color toward bright white based on current brightness
-      const brightness = trailBrightness[i];
-      trailColorHelper.setRGB(
-        base.r + (1 - base.r) * brightness,
-        base.g + (1 - base.g) * brightness,
-        base.b + (1 - base.b) * brightness,
-      );
+    // Lerp from base color toward bright white based on current brightness
+    const brightness = trailBrightness[i];
+    trailColorHelper.setRGB(
+      base.r + (1 - base.r) * brightness,
+      base.g + (1 - base.g) * brightness,
+      base.b + (1 - base.b) * brightness,
+    );
+    mesh.setColorAt(i, trailColorHelper);
+    needsUpdate = true;
+
+    // Clean up fully faded stars
+    if (trailPassTime[i] >= TRAIL_FADE_DURATION) {
+      trailPassTime[i] = -1;
+      trailBrightness[i] = 0;
+      // Restore exact base color
+      trailColorHelper.setRGB(base.r, base.g, base.b);
       mesh.setColorAt(i, trailColorHelper);
-      needsUpdate = true;
-
-      // Clean up fully faded stars
-      if (trailPassTime[i] >= TRAIL_FADE_DURATION) {
-        trailPassTime[i] = -1;
-        trailBrightness[i] = 0;
-        // Restore exact base color
-        trailColorHelper.setRGB(base.r, base.g, base.b);
-        mesh.setColorAt(i, trailColorHelper);
-      }
+      activeTrailStars.delete(i);
     }
   }
 
