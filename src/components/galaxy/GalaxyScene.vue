@@ -2,7 +2,7 @@
 // GalaxyScene — top-level wrapper: owns pan/zoom state and handles mouse events.
 // CameraController (child of TresCanvas) reads this state and applies it to the camera.
 
-import { ref, computed, watch } from 'vue';
+import { ref, shallowRef, computed, watch } from 'vue';
 import * as THREE from 'three';
 import { TresCanvas } from '@tresjs/core';
 import type { TresContext } from '@tresjs/core';
@@ -48,7 +48,7 @@ const dragStart = ref({ x: 0, y: 0 });
 const starFieldRef = ref<InstanceType<typeof StarField> | null>(null);
 
 // Active camera ref populated when TresCanvas is ready
-const activeCamera = ref<THREE.Camera | null>(null);
+const activeCamera = shallowRef<THREE.Camera | null>(null);
 
 // Proxy objects matching the { value: T } shape expected by useStarInteraction
 const meshProxy = { get value() { return starFieldRef.value?.instancedMesh ?? null; } };

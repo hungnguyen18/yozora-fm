@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { shallowRef, watch, onMounted, markRaw } from 'vue';
 import * as THREE from 'three';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useSongsStore } from '@/stores/songs';
@@ -11,7 +11,7 @@ const galaxyStore = useGalaxyStore();
 const songsStore = useSongsStore();
 const { showConstellations } = useLOD();
 
-const lineGroup = ref<THREE.Group>(new THREE.Group());
+const lineGroup = shallowRef<THREE.Group>(markRaw(new THREE.Group()));
 
 // Cache of line objects keyed by artist_id so we can show/hide individually
 const artistLineMap = new Map<number, THREE.LineSegments>();

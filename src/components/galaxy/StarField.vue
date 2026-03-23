@@ -2,7 +2,7 @@
 // StarField — renders all songs as a single InstancedMesh in the TresJS scene.
 // Must be placed inside a TresCanvas (child of GalaxyScene).
 
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, shallowRef, computed, watch, onMounted } from 'vue';
 import * as THREE from 'three';
 import { useLoop } from '@tresjs/core';
 import { useSongsStore } from '@/stores/songs';
@@ -17,13 +17,13 @@ const galaxyStore = useGalaxyStore();
 const { computeBuffers } = useGalaxyLayout();
 const { showLabels, labelVoteThreshold } = useLOD();
 
-const instancedMesh = ref<THREE.InstancedMesh | null>(null);
+const instancedMesh = shallowRef<THREE.InstancedMesh | null>(null);
 
 // Per-instance base scale cached from buildMesh so hover can restore it
 const listBaseScale = ref<number[]>([]);
 
 // Per-instance 3D world position cached for label projection
-const listStarWorldPosition = ref<THREE.Vector3[]>([]);
+const listStarWorldPosition = shallowRef<THREE.Vector3[]>([]);
 
 // Build a circular gradient texture programmatically for the glow effect
 const createGlowTexture = (): THREE.Texture => {
