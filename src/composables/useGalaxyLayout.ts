@@ -79,8 +79,8 @@ export const useGalaxyLayout = () => {
       const armOffsetDeg = armIndex * 90;
 
       const rng = seededRandom(song.id);
-      const angleJitterDeg = (rng() * 2 - 1) * 15;
-      const radiusJitterPct = (rng() * 2 - 1) * 0.08;
+      const angleJitterDeg = (rng() * 2 - 1) * 25;
+      const radiusJitterPct = (rng() * 2 - 1) * 0.15;
 
       const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
       const angleRad = (angleDeg * Math.PI) / 180;
@@ -90,7 +90,11 @@ export const useGalaxyLayout = () => {
       const y = radius * Math.sin(angleRad);
       const size = computeStarSize(song.vote_count);
 
+      // Random Z-rotation per star so quads don't align into rectangles
+      const zRotation = rng() * Math.PI * 2;
+
       dummy.position.set(x, y, 0);
+      dummy.rotation.set(0, 0, zRotation);
       dummy.scale.set(size, size, 1);
       dummy.updateMatrix();
       dummy.matrix.toArray(matrices, i * 16);
@@ -109,7 +113,8 @@ export const useGalaxyLayout = () => {
   };
 
   // Compute the world position for a single song without allocating full buffers.
-  // Uses the same spiral layout formula as computeBuffers.
+  // Uses the SAME jitter parameters as computeBuffers (±25° angle, ±15% radius)
+  // so positions match the actual rendered star locations exactly.
   const computeSinglePosition = (
     songId: number,
     year: number,
@@ -125,8 +130,8 @@ export const useGalaxyLayout = () => {
     const armOffsetDeg = armIndex * 90;
 
     const rng = seededRandom(songId);
-    const angleJitterDeg = (rng() * 2 - 1) * 15;
-    const radiusJitterPct = (rng() * 2 - 1) * 0.08;
+    const angleJitterDeg = (rng() * 2 - 1) * 25;
+    const radiusJitterPct = (rng() * 2 - 1) * 0.15;
 
     const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
     const angleRad = (angleDeg * Math.PI) / 180;

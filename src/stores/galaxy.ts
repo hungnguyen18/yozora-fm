@@ -19,36 +19,6 @@ const LIST_ERA: IEra[] = [
   { decade: 2020, name: "New Frontier", startYear: 2020, endYear: 2029 },
 ];
 
-const R_MAX = 500;
-
-// Maps genre to spiral arm index (0-3); 4 arms separated by 90° each
-const GENRE_ARM_MAP: Record<string, number> = {
-  rock: 0,
-  electronic: 1,
-  pop: 2,
-  ballad: 3,
-  orchestral: 0,
-  other: 2,
-};
-
-// Seeded pseudo-random number generator (mulberry32) for reproducible jitter per song id
-const seededRandom = (seed: number): (() => number) => {
-  let s = seed >>> 0;
-  return () => {
-    s += 0x6d2b79f5;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-interface IEraStats {
-  decade: number;
-  songCount: number;
-  topGenre: string | null;
-}
-
 export const useGalaxyStore = defineStore("galaxy", {
   state: () => ({
     listStarPosition: [] as IStarPosition[],
@@ -70,67 +40,8 @@ export const useGalaxyStore = defineStore("galaxy", {
   }),
   getters: {
     currentEra: (state): IEra | null => state.focusedEra,
-
-    eraStats: (state): IEraStats[] => {
-      // Count songs per decade and find top genre from star positions is not enough —
-      // star positions only carry songId. This getter is best computed when songs are
-      // available externally; return counts from the listStarPosition mapping per era.
-      return LIST_ERA.map((era) => ({
-        decade: era.decade,
-        // listStarPosition does not carry genre; count based on angle ranges is impractical.
-        // Callers that need full stats should combine songsStore + galaxyStore.
-        songCount: state.listStarPosition.length,
-        topGenre: null,
-      }));
-    },
   },
   actions: {
-    computeStarPositions(listSong: ISong[]) {
-      const TOTAL_SPAN_YEARS = 46; // 1980–2025 inclusive span
-      const MAX_ANGLE_DEG = 1620;
-
-      const listPosition: IStarPosition[] = [];
-
-      for (let i = 0; i < listSong.length; i += 1) {
-        const song = listSong[i];
-        const year = song.year ?? 1980;
-        const clampedYear = Math.max(
-          1980,
-          Math.min(year, 1980 + TOTAL_SPAN_YEARS),
-        );
-
-        const normalised = (clampedYear - 1980) / TOTAL_SPAN_YEARS;
-
-        // Base angle and radius from Archimedean spiral spec
-        const baseAngleDeg = normalised * MAX_ANGLE_DEG;
-        const baseRadius = R_MAX * (1 - normalised);
-
-        // Arm offset: 4 arms × 90°
-        const armIndex = GENRE_ARM_MAP[song.genre ?? "other"] ?? 2;
-        const armOffsetDeg = armIndex * 90;
-
-        // Seeded jitter for reproducibility
-        const rng = seededRandom(song.id);
-        const angleJitterDeg = (rng() * 2 - 1) * 5; // ±5°
-        const radiusJitterPct = (rng() * 2 - 1) * 0.02; // ±2%
-
-        const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
-        const angleRad = (angleDeg * Math.PI) / 180;
-        const radius = baseRadius * (1 + radiusJitterPct);
-
-        listPosition.push({
-          x: radius * Math.cos(angleRad),
-          y: radius * Math.sin(angleRad),
-          z: 0,
-          angle: angleRad,
-          radius,
-          songId: song.id,
-        });
-      }
-
-      this.listStarPosition = listPosition;
-    },
-
     computeConstellations(listSong: ISong[]) {
       // Group songs by artist_id; only retain artists with 2+ songs
       const grouped = new Map<number, number[]>();

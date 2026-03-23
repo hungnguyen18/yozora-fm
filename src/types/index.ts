@@ -130,9 +130,6 @@ export interface ITriviaUpvote {
 export interface IStarPosition {
   x: number;
   y: number;
-  z: number;
-  angle: number; // θ in radians
-  radius: number; // distance from the galaxy centre
   songId: number;
 }
 

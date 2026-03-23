@@ -105,8 +105,8 @@ const draw = () => {
       const armOffsetDeg = armIndex * 90;
 
       const rng = seededRandom(song.id);
-      const angleJitterDeg = (rng() * 2 - 1) * 15;
-      const radiusJitterPct = (rng() * 2 - 1) * 0.08;
+      const angleJitterDeg = (rng() * 2 - 1) * 25;
+      const radiusJitterPct = (rng() * 2 - 1) * 0.15;
 
       const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
       const angleRad = (angleDeg * Math.PI) / 180;
