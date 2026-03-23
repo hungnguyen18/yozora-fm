@@ -4,13 +4,13 @@ import type {
   ISeedAnime,
   ISeedArtist,
   ISeedSong,
-} from './types.ts';
+} from "./types.ts";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const BASE_URL = 'https://api.animethemes.moe';
+const BASE_URL = "https://api.animethemes.moe";
 const PAGE_SIZE = 100;
 // ~700 ms between requests to stay under the 90 req/min rate limit
 const REQUEST_DELAY_MS = 700;
@@ -25,12 +25,19 @@ const MAX_RETRIES = 5;
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-const fetchWithRetry = async (url: string, retries = MAX_RETRIES): Promise<Response> => {
-  const response = await fetch(url);
+const fetchWithRetry = async (
+  url: string,
+  retries = MAX_RETRIES,
+): Promise<Response> => {
+  const response = await fetch(url, {
+    headers: { "User-Agent": "Yozora.fm/1.0 (anime music timeline)" },
+  });
 
   if (response.status === 429 && retries > 0) {
     const backoff = INITIAL_BACKOFF_MS * (MAX_RETRIES - retries + 1);
-    console.warn(`Rate-limited. Retrying in ${backoff}ms... (${retries} retries left)`);
+    console.warn(
+      `Rate-limited. Retrying in ${backoff}ms... (${retries} retries left)`,
+    );
     await sleep(backoff);
     return fetchWithRetry(url, retries - 1);
   }
@@ -55,8 +62,8 @@ const fetchAllAnimePages = async (): Promise<TAnimeThemesAnime[]> => {
     const url =
       `${BASE_URL}/anime` +
       `?include=animethemes.song.artists,animethemes.animethemeentries.videos,resources` +
-      `&page[size]=${PAGE_SIZE}` +
-      `&page[number]=${pageNumber}`;
+      `&page%5Bsize%5D=${PAGE_SIZE}` +
+      `&page%5Bnumber%5D=${pageNumber}`;
 
     console.log(`Fetching page ${pageNumber}...`);
 
@@ -81,8 +88,8 @@ const fetchAllAnimePages = async (): Promise<TAnimeThemesAnime[]> => {
 // Parsing helpers
 // ---------------------------------------------------------------------------
 
-const ANILIST_SITES = new Set(['AniList', 'anilist', 'Anilist']);
-const YOUTUBE_SITES = new Set(['Youtube', 'YouTube', 'youtube']);
+const ANILIST_SITES = new Set(["AniList", "anilist", "Anilist"]);
+const YOUTUBE_SITES = new Set(["Youtube", "YouTube", "youtube"]);
 
 const extractAnilistId = (anime: TAnimeThemesAnime): number | undefined => {
   const resource = anime.resources.find((r) => ANILIST_SITES.has(r.site));
@@ -99,17 +106,19 @@ const extractYoutubeId = (anime: TAnimeThemesAnime): string | undefined => {
   if (match) {
     return match[1];
   }
-  return resource.external_id != null ? String(resource.external_id) : undefined;
+  return resource.external_id != null
+    ? String(resource.external_id)
+    : undefined;
 };
 
 // Map raw API theme type string to our canonical 'OP' | 'ED'
-const normalizeThemeType = (rawType: string): 'OP' | 'ED' | null => {
+const normalizeThemeType = (rawType: string): "OP" | "ED" | null => {
   const upper = rawType.toUpperCase();
-  if (upper === 'OP') {
-    return 'OP';
+  if (upper === "OP") {
+    return "OP";
   }
-  if (upper === 'ED') {
-    return 'ED';
+  if (upper === "ED") {
+    return "ED";
   }
   return null;
 };
