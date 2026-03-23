@@ -1,11 +1,55 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed, onBeforeUnmount } from 'vue';
+import { useSongsStore } from '@/stores/songs';
 
 const props = defineProps<{ isLoading: boolean }>();
+
+const songsStore = useSongsStore();
 
 const isVisible = ref(true);
 const isExiting = ref(false);
 let hasBeenLoading = false;
+
+// Animated star counter that increments toward the real count
+const displayCount = ref(0);
+let countInterval: ReturnType<typeof setInterval> | null = null;
+
+const starCountText = computed(() => {
+  if (displayCount.value === 0) { return 'Discovering stars...'; }
+  return `Loading ${displayCount.value.toLocaleString()} stars...`;
+});
+
+// Animate the counter toward the actual song count
+watch(
+  () => songsStore.listSong.length,
+  (target) => {
+    if (target === 0) { return; }
+    if (countInterval) { clearInterval(countInterval); }
+
+    const step = Math.max(1, Math.floor(target / 60));
+    countInterval = setInterval(() => {
+      displayCount.value = Math.min(displayCount.value + step, target);
+      if (displayCount.value >= target) {
+        displayCount.value = target;
+        if (countInterval) { clearInterval(countInterval); }
+      }
+    }, 16);
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  if (countInterval) { clearInterval(countInterval); }
+});
+
+// Progress bar: show real progress (0-100) based on songs loaded vs expected total
+const progressPercent = computed(() => {
+  const count = songsStore.listSong.length;
+  if (count === 0) { return 0; }
+  // Estimate ~9000 songs total; cap at 100
+  const estimated = 9000;
+  return Math.min(100, Math.round((count / estimated) * 100));
+});
 
 const beginExit = () => {
   if (isExiting.value) { return; }
@@ -79,9 +123,16 @@ watch(
         Every song is a star. Tune in to the night sky of your memories.
       </p>
 
+      <!-- Star count -->
+      <p class="star-count">{{ starCountText }}</p>
+
       <!-- Progress bar -->
       <div class="progress-track">
-        <div class="progress-fill" />
+        <div
+          class="progress-fill"
+          :class="{ 'progress-determinate': progressPercent > 0 }"
+          :style="progressPercent > 0 ? { width: progressPercent + '%' } : {}"
+        />
       </div>
     </div>
   </Transition>
@@ -159,6 +210,16 @@ watch(
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Star count */
+.star-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: rgba(155, 155, 180, 0.7);
+  letter-spacing: 0.06em;
+  margin: 0;
+  animation: fadeIn 0.6s ease-out 0.8s both;
+}
+
 /* Progress bar */
 .progress-track {
   width: 12rem;
@@ -175,6 +236,12 @@ watch(
   border-radius: 9999px;
   animation: progressIndeterminate 1.8s ease-in-out infinite;
   transform-origin: left center;
+}
+
+.progress-fill.progress-determinate {
+  animation: none;
+  margin-left: 0;
+  transition: width 0.3s ease-out;
 }
 
 @keyframes progressIndeterminate {

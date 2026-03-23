@@ -16,11 +16,26 @@ import LoadingScreen from '@/components/ui/LoadingScreen.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useSongsStore } from '@/stores/songs';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
+import { usePlayer } from '@/composables/usePlayer';
 
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
 
 useKeyboardNav();
+
+// Initialize player with persistent video elements.
+// These refs are module-level singletons — binding them in App.vue
+// ensures the <video> elements are always in the DOM, surviving
+// DetailPanel mount/unmount cycles.
+const { videoA, videoB, setupProgressTracking } = usePlayer();
+
+// Attach progress tracking once video elements are available
+const onVideoAReady = (el: HTMLVideoElement | null) => {
+  if (el) { setupProgressTracking(el); }
+};
+const onVideoBReady = (el: HTMLVideoElement | null) => {
+  if (el) { setupProgressTracking(el); }
+};
 
 const isLoading = computed(() => songsStore.isLoading);
 
@@ -63,6 +78,20 @@ onMounted(async () => {
   <div class="w-screen h-screen overflow-hidden bg-[#0A0B1A] relative">
     <LoadingScreen :is-loading="isLoading" />
 
+    <!-- Persistent audio/video elements — always in DOM, never unmounted -->
+    <video
+      :ref="(el) => { videoA = el; onVideoAReady(el); }"
+      style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
+      preload="auto"
+      playsinline
+    />
+    <video
+      :ref="(el) => { videoB = el; onVideoBReady(el); }"
+      style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
+      preload="auto"
+      playsinline
+    />
+
     <GalaxyScene @pointerdown="dismissOnboarding" @wheel="dismissOnboarding" />
     <DetailPanel />
     <PipPlayer />
@@ -91,7 +120,7 @@ onMounted(async () => {
 <style scoped>
 .onboarding-tooltip {
   position: fixed;
-  bottom: 5.5rem;
+  bottom: 9rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
@@ -116,6 +145,6 @@ onMounted(async () => {
 .onboarding-fade-enter-from,
 .onboarding-fade-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(8px);
+  transform: translateX(-50%) translateY(12px);
 }
 </style>

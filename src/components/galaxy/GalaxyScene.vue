@@ -210,6 +210,15 @@ const onTresReady = (ctx: TresContext) => {
   position: relative;
 }
 
+.galaxy-canvas-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(10, 11, 26, 0.6) 100%);
+  z-index: 1;
+}
+
 .galaxy-canvas-wrapper:active {
   cursor: grabbing;
 }

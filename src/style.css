@@ -59,6 +59,18 @@ samp {
   font-family: "JetBrains Mono", monospace;
 }
 
+/* Smooth scrollbar for detail panel and other scrollable areas */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(155, 155, 180, 0.2);
+  border-radius: 2px;
+}
+
 #app {
   height: 100%;
   width: 100%;

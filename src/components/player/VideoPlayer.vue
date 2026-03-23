@@ -231,25 +231,8 @@ onUnmounted(() => {
       </div>
     </Transition>
 
-    <!-- Video element A -->
-    <video
-      v-if="hasVideo"
-      ref="videoA"
-      class="video-player__video"
-      :class="{ 'video-player__video--active': activeVideo === 'A' }"
-      preload="auto"
-      playsinline
-    />
-
-    <!-- Video element B -->
-    <video
-      v-if="hasVideo"
-      ref="videoB"
-      class="video-player__video"
-      :class="{ 'video-player__video--active': activeVideo === 'B' }"
-      preload="auto"
-      playsinline
-    />
+    <!-- Video elements are now in App.vue (always mounted).
+         VideoPlayer only provides the visual overlay/controls. -->
 
     <!-- Controls overlay -->
     <div
