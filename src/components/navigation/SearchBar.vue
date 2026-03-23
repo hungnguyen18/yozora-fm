@@ -197,6 +197,14 @@ useEventListener(window, 'keydown', onKeyDown);
             </template>
           </div>
 
+          <!-- No results state -->
+          <div
+            v-if="listResult.length === 0 && query.trim().length >= 2"
+            class="search-no-results"
+          >
+            No results for "{{ query }}"
+          </div>
+
           <!-- Empty state hint -->
           <div
             v-if="listResult.length === 0 && query.length === 0"
@@ -397,6 +405,13 @@ useEventListener(window, 'keydown', onKeyDown);
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 0.125rem;
+}
+
+.search-no-results {
+  padding: 1.5rem 1rem;
+  font-size: 0.8125rem;
+  color: #9b9bb4;
+  text-align: center;
 }
 
 .search-hint {

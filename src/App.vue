@@ -80,13 +80,13 @@ onMounted(async () => {
 
     <!-- Persistent audio/video elements — always in DOM, never unmounted -->
     <video
-      :ref="(el) => { videoA = el; onVideoAReady(el); }"
+      :ref="(el) => { if (el) { videoA = el; onVideoAReady(el); } }"
       style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
       preload="auto"
       playsinline
     />
     <video
-      :ref="(el) => { videoB = el; onVideoBReady(el); }"
+      :ref="(el) => { if (el) { videoB = el; onVideoBReady(el); } }"
       style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
       preload="auto"
       playsinline
