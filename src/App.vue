@@ -14,9 +14,12 @@ import UserMenu from '@/components/ui/UserMenu.vue';
 import LoadingScreen from '@/components/ui/LoadingScreen.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useSongsStore } from '@/stores/songs';
+import { useKeyboardNav } from '@/composables/useKeyboardNav';
 
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
+
+useKeyboardNav();
 
 const isLoading = computed(() => songsStore.isLoading);
 

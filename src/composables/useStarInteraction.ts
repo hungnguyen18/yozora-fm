@@ -3,13 +3,22 @@ import * as THREE from "three";
 import { useGalaxyStore } from "@/stores/galaxy";
 import { usePlayerStore } from "@/stores/player";
 import { useSongsStore } from "@/stores/songs";
+import type { IStarSpatialIndex } from "@/composables/useStarSpatialIndex";
 
 // Maximum screen-space distance (pixels) to count as a star click/hover
 const HIT_RADIUS_PX = 24;
 
+// World-space search radius used to query the spatial grid.
+// This is dynamically scaled by zoom so fewer stars are checked at far zoom.
+const BASE_SEARCH_RADIUS = 80;
+
+// Throttle hover detection to ~30 fps (33ms)
+const THROTTLE_MS = 33;
+
 export const useStarInteraction = (
   meshRef: { value: THREE.InstancedMesh | null },
   camera: { value: THREE.Camera | null },
+  spatialIndex: IStarSpatialIndex,
 ) => {
   const galaxyStore = useGalaxyStore();
   const playerStore = usePlayerStore();
@@ -30,8 +39,77 @@ export const useStarInteraction = (
   const _scale = new THREE.Vector3();
   const _matrix = new THREE.Matrix4();
 
+  // Reusable vector for unprojecting screen to world
+  const _unprojectNear = new THREE.Vector3();
+
+  // Screen projection cache — invalidated when camera moves
+  let cachedProjections: Map<number, { sx: number; sy: number }> = new Map();
+  let cacheZoom = -1;
+  let cachePanX = NaN;
+  let cachePanY = NaN;
+
+  const isCacheValid = (): boolean => {
+    return (
+      cacheZoom === galaxyStore.zoomLevel &&
+      cachePanX === galaxyStore.panX &&
+      cachePanY === galaxyStore.panY
+    );
+  };
+
+  const invalidateCache = (): void => {
+    cachedProjections.clear();
+    cacheZoom = galaxyStore.zoomLevel;
+    cachePanX = galaxyStore.panX;
+    cachePanY = galaxyStore.panY;
+  };
+
+  // Project a single star instance to screen pixels, using cache when valid.
+  const projectInstance = (
+    instanceIndex: number,
+    mesh: THREE.InstancedMesh,
+    cam: THREE.Camera,
+  ): { sx: number; sy: number } | null => {
+    const cached = cachedProjections.get(instanceIndex);
+    if (cached) {
+      return cached;
+    }
+
+    mesh.getMatrixAt(instanceIndex, _matrix);
+    _matrix.decompose(_pos, _quat, _scale);
+
+    _projected.copy(_pos).project(cam);
+
+    // Skip points behind camera
+    if (_projected.z > 1) {
+      return null;
+    }
+
+    const sx = (_projected.x * 0.5 + 0.5) * window.innerWidth;
+    const sy = (-_projected.y * 0.5 + 0.5) * window.innerHeight;
+
+    const result = { sx, sy };
+    cachedProjections.set(instanceIndex, result);
+    return result;
+  };
+
+  // Unproject screen position to world XY (z=0 plane for orthographic camera)
+  const screenToWorld = (
+    screenX: number,
+    screenY: number,
+    cam: THREE.Camera,
+  ): { wx: number; wy: number } => {
+    // Convert screen pixels to NDC
+    const ndcX = (screenX / window.innerWidth) * 2 - 1;
+    const ndcY = -(screenY / window.innerHeight) * 2 + 1;
+
+    _unprojectNear.set(ndcX, ndcY, 0);
+    _unprojectNear.unproject(cam);
+
+    return { wx: _unprojectNear.x, wy: _unprojectNear.y };
+  };
+
   // Find the nearest star instance to a screen position (in pixels).
-  // Returns the instance index or -1 if none is within HIT_RADIUS_PX.
+  // Uses the spatial index to only check nearby stars (~20-50) instead of all 9111.
   const findNearestStar = (screenX: number, screenY: number): number => {
     const mesh = meshRef.value;
     const cam = camera.value;
@@ -39,38 +117,51 @@ export const useStarInteraction = (
       return -1;
     }
 
+    // Invalidate projection cache when camera has moved
+    if (!isCacheValid()) {
+      invalidateCache();
+    }
+
+    // Unproject screen position to world coordinates
+    const { wx, wy } = screenToWorld(screenX, screenY, cam);
+
+    // Scale search radius inversely with zoom — at higher zoom, stars are
+    // spread further apart in screen space so we need a smaller world radius
+    const zoom = galaxyStore.zoomLevel;
+    const searchRadius = BASE_SEARCH_RADIUS / Math.max(zoom, 0.2);
+
+    // Query the spatial grid for candidate star indices
+    const listCandidate = spatialIndex.queryNear(wx, wy, searchRadius);
+
     let bestDist = HIT_RADIUS_PX * HIT_RADIUS_PX;
     let bestIndex = -1;
 
-    for (let i = 0; i < mesh.count; i += 1) {
-      mesh.getMatrixAt(i, _matrix);
-      _matrix.decompose(_pos, _quat, _scale);
-
-      // Project world position to NDC then to screen pixels
-      _projected.copy(_pos).project(cam);
-
-      // Skip points behind camera
-      if (_projected.z > 1) {
+    for (let i = 0; i < listCandidate.length; i += 1) {
+      const idx = listCandidate[i];
+      const screenPos = projectInstance(idx, mesh, cam);
+      if (!screenPos) {
         continue;
       }
 
-      const sx = (_projected.x * 0.5 + 0.5) * window.innerWidth;
-      const sy = (-_projected.y * 0.5 + 0.5) * window.innerHeight;
-
-      const dx = sx - screenX;
-      const dy = sy - screenY;
+      const dx = screenPos.sx - screenX;
+      const dy = screenPos.sy - screenY;
       const distSq = dx * dx + dy * dy;
 
       if (distSq < bestDist) {
         bestDist = distSq;
-        bestIndex = i;
+        bestIndex = idx;
       }
     }
 
     return bestIndex;
   };
 
-  const onMouseMove = (event: MouseEvent): void => {
+  // RAF-based throttle: at most one hover check per animation frame, capped at ~30fps
+  let lastHoverTime = 0;
+  let pendingHoverEvent: MouseEvent | null = null;
+  let rafId = 0;
+
+  const processHover = (event: MouseEvent): void => {
     const instanceId = findNearestStar(event.clientX, event.clientY);
 
     if (instanceId >= 0) {
@@ -89,6 +180,33 @@ export const useStarInteraction = (
       hoveredInstanceId.value = null;
       galaxyStore.hoveredStarId = null;
       tooltipVisible.value = false;
+    }
+  };
+
+  const flushPendingHover = (): void => {
+    rafId = 0;
+    if (!pendingHoverEvent) {
+      return;
+    }
+
+    const now = performance.now();
+    if (now - lastHoverTime < THROTTLE_MS) {
+      // Still within throttle window — schedule again on next frame
+      rafId = requestAnimationFrame(flushPendingHover);
+      return;
+    }
+
+    lastHoverTime = now;
+    const event = pendingHoverEvent;
+    pendingHoverEvent = null;
+    processHover(event);
+  };
+
+  const onMouseMove = (event: MouseEvent): void => {
+    pendingHoverEvent = event;
+
+    if (rafId === 0) {
+      rafId = requestAnimationFrame(flushPendingHover);
     }
   };
 

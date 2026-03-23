@@ -500,8 +500,8 @@ const visibleLabels = computed<IStarLabel[]>(() => {
   return result;
 });
 
-// Expose the InstancedMesh ref and label data so GalaxyScene can consume them
-defineExpose({ instancedMesh, visibleLabels });
+// Expose the InstancedMesh ref, label data, and world positions so GalaxyScene can consume them
+defineExpose({ instancedMesh, visibleLabels, listStarWorldPosition });
 </script>
 
 <template>

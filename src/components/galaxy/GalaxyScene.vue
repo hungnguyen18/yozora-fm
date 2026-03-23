@@ -8,6 +8,7 @@ import { TresCanvas } from '@tresjs/core';
 import type { TresContext } from '@tresjs/core';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useStarInteraction } from '@/composables/useStarInteraction';
+import { useStarSpatialIndex } from '@/composables/useStarSpatialIndex';
 import { useLOD } from '@/composables/useLOD';
 import CameraController from './CameraController.vue';
 import ConstellationLines from './ConstellationLines.vue';
@@ -19,6 +20,7 @@ import StarField from './StarField.vue';
 
 const galaxyStore = useGalaxyStore();
 const { enableHover, particleCount } = useLOD();
+const starSpatialIndex = useStarSpatialIndex();
 
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 20;
@@ -63,10 +65,20 @@ const {
   tooltipText,
   onMouseMove,
   onClick,
-} = useStarInteraction(meshProxy, cameraProxy);
+} = useStarInteraction(meshProxy, cameraProxy, starSpatialIndex);
 
 // Star labels computed inside StarField and accessed via template ref
 const visibleLabels = computed(() => starFieldRef.value?.visibleLabels ?? []);
+
+// Build spatial index when StarField provides world positions
+watch(
+  () => starFieldRef.value?.listStarWorldPosition,
+  (positions) => {
+    if (positions && positions.length > 0) {
+      starSpatialIndex.build(positions);
+    }
+  },
+);
 
 // Cursor style: pointer when hovering a star, grab otherwise
 const cursorStyle = computed(() =>
