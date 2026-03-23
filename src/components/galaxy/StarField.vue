@@ -59,11 +59,10 @@ const buildMesh = () => {
   const material = new THREE.MeshBasicMaterial({
     map: createGlowTexture(),
     transparent: true,
-    opacity: 1.0,
+    opacity: 0.85,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
-    color: 0xffffff,
   });
 
   const mesh = new THREE.InstancedMesh(geometry, material, count);

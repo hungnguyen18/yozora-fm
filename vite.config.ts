@@ -5,17 +5,7 @@ import { fileURLToPath, URL } from "node:url";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    vue({
-      template: {
-        compilerOptions: {
-          isCustomElement: (tag) =>
-            tag.startsWith("Tres") && tag !== "TresCanvas",
-        },
-      },
-    }),
-  ],
+  plugins: [tailwindcss(), vue()],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
