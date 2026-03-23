@@ -231,8 +231,8 @@ onUnmounted(() => {
       </div>
     </Transition>
 
-    <!-- Video elements are now in App.vue (always mounted).
-         VideoPlayer only provides the visual overlay/controls. -->
+    <!-- Teleport target: App.vue teleports the persistent <video> elements here -->
+    <div id="video-teleport-target" class="video-player__video-container" />
 
     <!-- Controls overlay -->
     <div
@@ -308,6 +308,22 @@ onUnmounted(() => {
   border-radius: 12px;
   aspect-ratio: 16 / 9;
   background-color: #0a0b1a;
+}
+
+/* Video container — receives teleported <video> elements from App.vue */
+.video-player__video-container {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+/* Style the teleported video elements inside the container */
+.video-player__video-container :deep(video) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* Blurred backdrop */

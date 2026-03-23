@@ -15,13 +15,28 @@ import UserMenu from '@/components/ui/UserMenu.vue';
 import LoadingScreen from '@/components/ui/LoadingScreen.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useSongsStore } from '@/stores/songs';
+import { useGalaxyStore } from '@/stores/galaxy';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
 import { usePlayer } from '@/composables/usePlayer';
 
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
+const galaxyStore = useGalaxyStore();
 
 useKeyboardNav();
+
+// Track whether VideoPlayer's teleport target exists in the DOM
+const isVideoPlayerMounted = ref(false);
+let videoPlayerObserver: MutationObserver | null = null;
+
+onMounted(() => {
+  // Watch for the teleport target to appear/disappear
+  videoPlayerObserver = new MutationObserver(() => {
+    isVideoPlayerMounted.value = !!document.getElementById('video-teleport-target');
+  });
+  videoPlayerObserver.observe(document.body, { childList: true, subtree: true });
+});
+
 
 // Initialize player with persistent video elements.
 // These refs are module-level singletons — binding them in App.vue
@@ -78,19 +93,36 @@ onMounted(async () => {
   <div class="w-screen h-screen overflow-hidden bg-[#0A0B1A] relative">
     <LoadingScreen :is-loading="isLoading" />
 
-    <!-- Persistent audio/video elements — always in DOM, never unmounted -->
-    <video
-      :ref="(el) => { if (el) { videoA = el; onVideoAReady(el); } }"
-      style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
-      preload="auto"
-      playsinline
-    />
-    <video
-      :ref="(el) => { if (el) { videoB = el; onVideoBReady(el); } }"
-      style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
-      preload="auto"
-      playsinline
-    />
+    <!-- Persistent video elements — teleported into VideoPlayer when panel is open,
+         hidden otherwise. This ensures audio continues across panel open/close. -->
+    <Teleport v-if="isVideoPlayerMounted" to="#video-teleport-target">
+      <video
+        :ref="(el) => { if (el) { videoA = el; onVideoAReady(el); } }"
+        class="app-video"
+        preload="auto"
+        playsinline
+      />
+      <video
+        :ref="(el) => { if (el) { videoB = el; onVideoBReady(el); } }"
+        class="app-video"
+        preload="auto"
+        playsinline
+      />
+    </Teleport>
+    <template v-else>
+      <video
+        :ref="(el) => { if (el) { videoA = el; onVideoAReady(el); } }"
+        style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
+        preload="auto"
+        playsinline
+      />
+      <video
+        :ref="(el) => { if (el) { videoB = el; onVideoBReady(el); } }"
+        style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"
+        preload="auto"
+        playsinline
+      />
+    </template>
 
     <GalaxyScene @pointerdown="dismissOnboarding" @wheel="dismissOnboarding" />
     <DetailPanel />
