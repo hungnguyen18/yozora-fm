@@ -1,13 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
-import type { ISeedArtist, ISeedAnime, ISeedSong } from './types.ts';
+import { createClient } from "@supabase/supabase-js";
+import type { ISeedArtist, ISeedAnime, ISeedSong } from "./types.ts";
 
 // ---------------------------------------------------------------------------
 // Supabase client — service role key bypasses RLS
 // ---------------------------------------------------------------------------
 
 const supabase = createClient(
-  process.env['VITE_SUPABASE_URL']!,
-  process.env['SUPABASE_SERVICE_ROLE_KEY']!,
+  process.env["VITE_SUPABASE_URL"]!,
+  process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
 );
 
 // ---------------------------------------------------------------------------
@@ -39,21 +39,26 @@ export const upsertArtists = async (
 
   const artistIdMap = new Map<string, number>();
 
-  // Fetch all existing artists by name to avoid duplicates
+  // Fetch all existing artists in batches (Supabase has URL length limits for .in())
   const listName = artists.map((a) => a.name);
-  const { data: existing, error: fetchError } = await supabase
-    .from('artists')
-    .select('id, name')
-    .in('name', listName);
+  const nameBatches = chunkArray(listName, 200);
+  for (let b = 0; b < nameBatches.length; b += 1) {
+    const { data: existing, error: fetchError } = await supabase
+      .from("artists")
+      .select("id, name")
+      .in("name", nameBatches[b]);
 
-  if (fetchError) {
-    throw new Error(`Failed to fetch existing artists: ${fetchError.message}`);
-  }
+    if (fetchError) {
+      console.warn(
+        `Artists fetch batch ${b + 1} failed: ${fetchError.message} — skipping`,
+      );
+      continue;
+    }
 
-  // Populate map with already-existing artists
-  for (let i = 0; i < (existing ?? []).length; i += 1) {
-    const row = existing![i];
-    artistIdMap.set(row.name, row.id);
+    for (let i = 0; i < (existing ?? []).length; i += 1) {
+      const row = existing![i];
+      artistIdMap.set(row.name, row.id);
+    }
   }
 
   // Determine which artists are truly new
@@ -74,12 +79,14 @@ export const upsertArtists = async (
     }));
 
     const { data: inserted, error } = await supabase
-      .from('artists')
+      .from("artists")
       .insert(rows)
-      .select('id, name');
+      .select("id, name");
 
     if (error) {
-      throw new Error(`Failed to insert artists batch ${i + 1}: ${error.message}`);
+      throw new Error(
+        `Failed to insert artists batch ${i + 1}: ${error.message}`,
+      );
     }
 
     for (let j = 0; j < (inserted ?? []).length; j += 1) {
@@ -88,7 +95,9 @@ export const upsertArtists = async (
     }
   }
 
-  console.log(`Artists: inserted ${listNew.length} new, ${existing?.length ?? 0} already existed.`);
+  console.log(
+    `Artists: inserted ${listNew.length} new, ${artistIdMap.size - listNew.length} already existed.`,
+  );
   return artistIdMap;
 };
 
@@ -98,25 +107,34 @@ export const upsertArtists = async (
 
 export const upsertAnimes = async (
   animes: ISeedAnime[],
-  anilistEnrichment: Map<number, { coverUrl: string; year?: number; season?: string }>,
+  anilistEnrichment: Map<
+    number,
+    { coverUrl: string; year?: number; season?: string }
+  >,
 ): Promise<Map<string, number>> => {
   console.log(`Upserting ${animes.length} animes...`);
 
   const animeIdMap = new Map<string, number>();
 
   const listTitle = animes.map((a) => a.title);
-  const { data: existing, error: fetchError } = await supabase
-    .from('animes')
-    .select('id, title')
-    .in('title', listTitle);
+  const titleBatches = chunkArray(listTitle, 200);
+  for (let b = 0; b < titleBatches.length; b += 1) {
+    const { data: existing, error: fetchError } = await supabase
+      .from("animes")
+      .select("id, title")
+      .in("title", titleBatches[b]);
 
-  if (fetchError) {
-    throw new Error(`Failed to fetch existing animes: ${fetchError.message}`);
-  }
+    if (fetchError) {
+      console.warn(
+        `Animes fetch batch ${b + 1} failed: ${fetchError.message} — skipping`,
+      );
+      continue;
+    }
 
-  for (let i = 0; i < (existing ?? []).length; i += 1) {
-    const row = existing![i];
-    animeIdMap.set(row.title, row.id);
+    for (let i = 0; i < (existing ?? []).length; i += 1) {
+      const row = existing![i];
+      animeIdMap.set(row.title, row.id);
+    }
   }
 
   const listNew = animes.filter((a) => !animeIdMap.has(a.title));
@@ -132,10 +150,13 @@ export const upsertAnimes = async (
     const rows = batch.map((anime) => {
       // Merge AniList enrichment if available
       const enriched =
-        anime.anilistId !== undefined ? anilistEnrichment.get(anime.anilistId) : undefined;
+        anime.anilistId !== undefined
+          ? anilistEnrichment.get(anime.anilistId)
+          : undefined;
 
       const year = enriched?.year ?? anime.year;
-      const season = enriched?.season ?? anime.season;
+      const rawSeason = enriched?.season ?? anime.season;
+      const season = rawSeason?.toLowerCase();
       const coverUrl = enriched?.coverUrl ?? anime.coverUrl;
 
       return {
@@ -143,18 +164,22 @@ export const upsertAnimes = async (
         ...(anime.titleJp !== undefined ? { title_jp: anime.titleJp } : {}),
         ...(year !== undefined ? { year } : {}),
         ...(season !== undefined ? { season } : {}),
-        ...(anime.anilistId !== undefined ? { anilist_id: anime.anilistId } : {}),
+        ...(anime.anilistId !== undefined
+          ? { anilist_id: anime.anilistId }
+          : {}),
         ...(coverUrl !== undefined ? { cover_url: coverUrl } : {}),
       };
     });
 
     const { data: inserted, error } = await supabase
-      .from('animes')
+      .from("animes")
       .insert(rows)
-      .select('id, title');
+      .select("id, title");
 
     if (error) {
-      throw new Error(`Failed to insert animes batch ${i + 1}: ${error.message}`);
+      throw new Error(
+        `Failed to insert animes batch ${i + 1}: ${error.message}`,
+      );
     }
 
     for (let j = 0; j < (inserted ?? []).length; j += 1) {
@@ -163,7 +188,9 @@ export const upsertAnimes = async (
     }
   }
 
-  console.log(`Animes: inserted ${listNew.length} new, ${existing?.length ?? 0} already existed.`);
+  console.log(
+    `Animes: inserted ${listNew.length} new, ${animeIdMap.size - listNew.length} already existed.`,
+  );
   return animeIdMap;
 };
 
@@ -203,7 +230,9 @@ export const upsertSongs = async (
       sequence: song.sequence,
       year: song.year,
       ...(song.genre !== undefined ? { genre: song.genre } : {}),
-      ...(song.animethemesSlug !== undefined ? { animethemes_slug: song.animethemesSlug } : {}),
+      ...(song.animethemesSlug !== undefined
+        ? { animethemes_slug: song.animethemesSlug }
+        : {}),
       ...(song.youtubeId !== undefined ? { youtube_id: song.youtubeId } : {}),
       artist_id: artistId,
       anime_id: animeId,
@@ -217,20 +246,24 @@ export const upsertSongs = async (
   }
 
   if (skipped > 0) {
-    console.warn(`Songs: skipped ${skipped} songs due to unresolved artist/anime FKs.`);
+    console.warn(
+      `Songs: skipped ${skipped} songs due to unresolved artist/anime FKs.`,
+    );
   }
 
   if (listResolved.length === 0) {
-    console.log('Songs: nothing to insert.');
+    console.log("Songs: nothing to insert.");
     return;
   }
 
   const batches = chunkArray(listResolved, BATCH_SIZE);
   for (let i = 0; i < batches.length; i += 1) {
-    const { error } = await supabase.from('songs').insert(batches[i]);
+    const { error } = await supabase.from("songs").insert(batches[i]);
 
     if (error) {
-      throw new Error(`Failed to insert songs batch ${i + 1}: ${error.message}`);
+      throw new Error(
+        `Failed to insert songs batch ${i + 1}: ${error.message}`,
+      );
     }
   }
 
