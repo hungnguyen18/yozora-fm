@@ -4,6 +4,9 @@ import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
+import VideoPlayer from '@/components/player/VideoPlayer.vue';
+import YouTubeFallback from '@/components/player/YouTubeFallback.vue';
+import ExternalLinkCard from '@/components/player/ExternalLinkCard.vue';
 
 const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
@@ -35,7 +38,11 @@ const genreTags = computed(() => {
 });
 
 const close = () => {
-  playerStore.stop();
+  if (playerStore.isPlaying) {
+    playerStore.isPip = true;
+  } else {
+    playerStore.stop();
+  }
   galaxyStore.selectedSongId = null;
 };
 
