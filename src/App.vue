@@ -32,7 +32,7 @@ useKeyboardNav();
 // These refs are module-level singletons — binding them in App.vue
 // ensures the <video> elements are always in the DOM, surviving
 // DetailPanel mount/unmount cycles.
-const { videoA, videoB, activeVideo, videoContainerRect, setupProgressTracking } = usePlayer();
+const { videoA, videoB, activeVideo, isCrossfading, videoContainerRect, setupProgressTracking } = usePlayer();
 
 // Attach progress tracking once video elements are available
 const onVideoAReady = (el: HTMLVideoElement | null) => {
@@ -42,38 +42,7 @@ const onVideoBReady = (el: HTMLVideoElement | null) => {
   if (el) { setupProgressTracking(el); }
 };
 
-// Compute positioning style for the singleton video elements.
-// When videoContainerRect is set (VideoPlayer is mounted), position them
-// over the container area so the video is visible. Otherwise hide them
-// (audio continues since the elements stay in the DOM).
-const videoPositionStyle = computed(() => {
-  const rect = videoContainerRect.value;
-  if (!rect) {
-    return {
-      position: 'fixed' as const,
-      width: '0px',
-      height: '0px',
-      opacity: '0',
-      pointerEvents: 'none' as const,
-      zIndex: '1',
-    };
-  }
-  return {
-    position: 'fixed' as const,
-    top: `${rect.top}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    opacity: '1',
-    pointerEvents: 'none' as const,
-    zIndex: '53',
-    objectFit: 'cover' as const,
-    borderRadius: '12px',
-    transition: 'opacity 0.3s ease',
-  };
-});
-
-// Style for the inactive video — always hidden
+// Style when no container rect — videos are off-screen but still in DOM
 const videoHiddenStyle = {
   position: 'fixed' as const,
   width: '0px',
@@ -82,18 +51,66 @@ const videoHiddenStyle = {
   pointerEvents: 'none' as const,
 };
 
+// Compute video styles.  Both videos are ALWAYS positioned at the container rect
+// (when available) so the browser decodes frames even for the inactive one.
+// Visibility is controlled via opacity — during crossfade, both are visible
+// with CSS transition handling the smooth visual crossfade.
 const videoAStyle = computed(() => {
-  if (activeVideo.value === 'A') {
-    return videoPositionStyle.value;
+  const rect = videoContainerRect.value;
+  if (!rect) {
+    return videoHiddenStyle;
   }
-  return videoHiddenStyle;
+  const isActive = activeVideo.value === 'A';
+  const crossfading = isCrossfading.value;
+  // During crossfade: active (outgoing) fades out, inactive (incoming) fades in
+  // Normal: active visible, inactive hidden
+  let opacity: string;
+  if (crossfading) {
+    opacity = isActive ? '0' : '1';
+  } else {
+    opacity = isActive ? '1' : '0';
+  }
+  return {
+    position: 'fixed' as const,
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    opacity,
+    pointerEvents: 'none' as const,
+    zIndex: isActive ? '53' : '52',
+    objectFit: 'cover' as const,
+    borderRadius: '12px',
+    transition: crossfading ? 'opacity 2s ease' : 'opacity 0.3s ease',
+  };
 });
 
 const videoBStyle = computed(() => {
-  if (activeVideo.value === 'B') {
-    return videoPositionStyle.value;
+  const rect = videoContainerRect.value;
+  if (!rect) {
+    return videoHiddenStyle;
   }
-  return videoHiddenStyle;
+  const isActive = activeVideo.value === 'B';
+  const crossfading = isCrossfading.value;
+  let opacity: string;
+  if (crossfading) {
+    opacity = isActive ? '0' : '1';
+  } else {
+    opacity = isActive ? '1' : '0';
+  }
+  return {
+    position: 'fixed' as const,
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    opacity,
+    pointerEvents: 'none' as const,
+    zIndex: isActive ? '53' : '52',
+    objectFit: 'cover' as const,
+    borderRadius: '12px',
+    transition: crossfading ? 'opacity 2s ease' : 'opacity 0.3s ease',
+  };
 });
 
 const isLoading = computed(() => songsStore.isLoading);

@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<TVideoPlayerProps>(), {
 });
 
 const playerStore = usePlayerStore();
-const { videoA, videoB, activeVideo, isLoading, videoContainerRect, pause, resume, setVolume, setupProgressTracking } =
+const { videoA, videoB, activeVideo, isLoading, isCrossfading, videoContainerRect, pause, resume, setVolume, setupProgressTracking } =
   usePlayer();
 
 // Controls visibility state
@@ -179,8 +179,21 @@ onMounted(() => {
     resizeObserver.observe(containerRef.value);
   }
 
-  // Also update on scroll (panel is scrollable)
+  // Also update on scroll (panel is scrollable) and resize
   window.addEventListener('scroll', updateContainerRect, true);
+  window.addEventListener('resize', updateContainerRect);
+});
+
+// Sync isPlaying from store (e.g. after crossfade completes, next() called)
+watch(() => playerStore.isPlaying, (playing) => {
+  isPlaying.value = playing;
+});
+
+// Sync isLoading → reset progress display when a new song starts loading
+watch(isLoading, (loading) => {
+  if (loading) {
+    progress.value = 0;
+  }
 });
 
 // Watch for refs becoming available (they may be null on first mount if v-if delays rendering)
@@ -199,6 +212,7 @@ watch(videoB, (el) => {
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', onFullscreenChange);
   window.removeEventListener('scroll', updateContainerRect, true);
+  window.removeEventListener('resize', updateContainerRect);
   if (hideControlsTimer.value !== null) {
     clearTimeout(hideControlsTimer.value);
   }
@@ -235,10 +249,10 @@ onUnmounted(() => {
       />
     </div>
 
-    <!-- Cover art poster (visible when not playing) -->
+    <!-- Cover art poster (visible when not playing OR while video is loading) -->
     <Transition name="poster-fade">
       <div
-        v-if="!isPlaying && coverArtUrl"
+        v-if="(!isPlaying || isLoading) && coverArtUrl"
         class="video-player__poster"
       >
         <img

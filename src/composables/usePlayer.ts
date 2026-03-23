@@ -7,6 +7,8 @@ const videoA = ref<HTMLVideoElement | null>(null);
 const videoB = ref<HTMLVideoElement | null>(null);
 const activeVideo = ref<"A" | "B">("A");
 const isLoading = ref(false);
+// True while a crossfade animation is in progress — both videos must be visible
+const isCrossfading = ref(false);
 
 // Bounding rect of the VideoPlayer container — set by VideoPlayer, read by App.vue
 // When non-null, App.vue positions the video elements over this rect.
@@ -24,6 +26,22 @@ let watcherInstalled = false;
 let pendingSong: ISong | null = null;
 // Flag to skip the watcher when play() was called directly from a click handler
 let skipNextWatcherPlay = false;
+// Active crossfade RAF id — used to cancel an ongoing crossfade
+let crossfadeRafId = 0;
+
+// Remove all canplay/error listeners from a video element (cleanup helper)
+const cleanupVideoListeners = (
+  el: HTMLVideoElement,
+  onCanPlay?: () => void,
+  onError?: () => void,
+): void => {
+  if (onCanPlay) {
+    el.removeEventListener("canplay", onCanPlay);
+  }
+  if (onError) {
+    el.removeEventListener("error", onError);
+  }
+};
 
 export const usePlayer = () => {
   const playerStore = usePlayerStore();
@@ -44,6 +62,24 @@ export const usePlayer = () => {
     return activeVideo.value === "A" ? videoB.value : videoA.value;
   };
 
+  // Cancel any in-progress crossfade immediately
+  const cancelCrossfade = (): void => {
+    if (crossfadeRafId) {
+      cancelAnimationFrame(crossfadeRafId);
+      crossfadeRafId = 0;
+    }
+    if (isCrossfading.value) {
+      // Clean up: stop the inactive (was-incoming) video
+      const inactive = getInactiveVideoEl();
+      if (inactive && inactive.src) {
+        inactive.pause();
+        inactive.src = "";
+        inactive.load();
+      }
+      isCrossfading.value = false;
+    }
+  };
+
   // Play a song on the currently active video element.
   // If the video element isn't in the DOM yet (panel still mounting),
   // save the song as pending — it will be played when the ref becomes non-null.
@@ -52,6 +88,9 @@ export const usePlayer = () => {
     if (!url) {
       return;
     }
+
+    // Cancel any ongoing crossfade first
+    cancelCrossfade();
 
     const current = getActiveVideoEl();
     if (!current) {
@@ -63,45 +102,73 @@ export const usePlayer = () => {
     pendingSong = null;
     skipNextWatcherPlay = true;
     isLoading.value = true;
+
+    // Reset video state cleanly before loading new src
+    current.pause();
     current.src = url;
     current.volume = playerStore.volume;
+    current.load();
 
     const onCanPlay = (): void => {
       isLoading.value = false;
-      current.removeEventListener("canplay", onCanPlay);
+      cleanupVideoListeners(current, onCanPlay, onError);
     };
+
+    const onError = (): void => {
+      isLoading.value = false;
+      cleanupVideoListeners(current, onCanPlay, onError);
+    };
+
     current.addEventListener("canplay", onCanPlay);
+    current.addEventListener("error", onError);
 
     current.play().catch(() => {
       isLoading.value = false;
+      cleanupVideoListeners(current, onCanPlay, onError);
     });
 
     playerStore.isPlaying = true;
   };
 
-  // Crossfade from the current song to a new one over 2 seconds
+  // Crossfade from the current song to a new one over 2 seconds.
+  // Both videos are kept at full size during the crossfade — App.vue
+  // uses isCrossfading to show both, with CSS opacity transitions.
   const crossfadeTo = (song: ISong): void => {
     const url = getVideoUrl(song);
     if (!url) {
       return;
     }
 
+    // Cancel any previous crossfade
+    cancelCrossfade();
+
     const outgoing = getActiveVideoEl();
     const incoming = getInactiveVideoEl();
 
+    isLoading.value = true;
+    isCrossfading.value = true;
+
     if (incoming) {
-      isLoading.value = true;
       incoming.src = url;
       incoming.volume = 0;
+      incoming.load();
 
       const onCanPlay = (): void => {
         isLoading.value = false;
-        incoming.removeEventListener("canplay", onCanPlay);
+        cleanupVideoListeners(incoming, onCanPlay, onError);
       };
+
+      const onError = (): void => {
+        isLoading.value = false;
+        cleanupVideoListeners(incoming, onCanPlay, onError);
+      };
+
       incoming.addEventListener("canplay", onCanPlay);
+      incoming.addEventListener("error", onError);
 
       incoming.play().catch(() => {
         isLoading.value = false;
+        cleanupVideoListeners(incoming, onCanPlay, onError);
       });
     }
 
@@ -124,19 +191,22 @@ export const usePlayer = () => {
       }
 
       if (progress < 1) {
-        requestAnimationFrame(fade);
+        crossfadeRafId = requestAnimationFrame(fade);
       } else {
+        crossfadeRafId = 0;
         if (outgoing) {
           outgoing.pause();
           outgoing.src = "";
+          outgoing.load();
         }
         // Swap active video slot
         activeVideo.value = activeVideo.value === "A" ? "B" : "A";
+        isCrossfading.value = false;
         playerStore.isPlaying = true;
       }
     };
 
-    requestAnimationFrame(fade);
+    crossfadeRafId = requestAnimationFrame(fade);
   };
 
   const pause = (): void => {
@@ -236,6 +306,7 @@ export const usePlayer = () => {
     videoB,
     activeVideo,
     isLoading,
+    isCrossfading,
     videoContainerRect,
     play,
     crossfadeTo,
