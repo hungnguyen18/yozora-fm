@@ -43,6 +43,8 @@ export const useGalaxyStore = defineStore('galaxy', {
   state: () => ({
     listStarPosition: [] as IStarPosition[],
     zoomLevel: 1,
+    panX: 0,
+    panY: 0,
     focusedEra: null as IEra | null,
     hoveredStarId: null as number | null,
     selectedSongId: null as number | null,
@@ -138,6 +140,11 @@ export const useGalaxyStore = defineStore('galaxy', {
       } else {
         this.focusedEra = null;
       }
+    },
+
+    setPan(x: number, y: number) {
+      this.panX = x;
+      this.panY = y;
     },
 
     setFocusedEra(decade: number | null) {
