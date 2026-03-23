@@ -74,13 +74,24 @@ export const useComments = (songId: Ref<number>) => {
     }
 
     // Anonymous comments allowed — user_id is null for guests
-    await supabase.from("comments").insert({
+    const { error } = await supabase.from("comments").insert({
       song_id: songId.value,
       user_id: authStore.user?.id ?? null,
       content: trimmed,
     });
 
-    // Realtime subscription will trigger a re-fetch; no optimistic update needed.
+    if (error) {
+      console.error("[useComments:addComment] insert failed", {
+        error: String(error),
+      });
+      return;
+    }
+
+    // Manually refresh instead of relying on realtime (which may not be
+    // configured or may be blocked by RLS policies).
+    page.value = 0;
+    hasMore.value = true;
+    await fetchComments(songId.value);
   };
 
   const deleteComment = async (commentId: number) => {

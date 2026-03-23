@@ -67,33 +67,29 @@ export const useSongsStore = defineStore("songs", {
       this.isLoading = false;
     },
 
-    async searchSongs(query: string): Promise<ISong[]> {
-      const trimmed = query.trim();
+    searchSongs(query: string): ISong[] {
+      const trimmed = query.trim().toLowerCase();
       if (!trimmed) {
         return [];
       }
 
-      const { data, error } = await supabase
-        .from("songs")
-        .select("*, artist:artists(*), anime:animes(*)")
-        .or(`title.ilike.%${trimmed}%,title_jp.ilike.%${trimmed}%`);
-
-      if (error) {
-        return [];
-      }
-
-      // Filter by artist name and anime title on the joined data
-      const listResult = ((data as ISong[]) ?? []).filter((song) => {
-        const lowerQuery = trimmed.toLowerCase();
-        const matchTitle = song.title.toLowerCase().includes(lowerQuery);
+      // Search the already-loaded song list (avoids DB round-trip and
+      // fixes the bug where artist/anime-only matches were never returned
+      // because the old Supabase .or() only filtered on title columns).
+      const listResult: ISong[] = [];
+      for (let i = 0; i < this.listSong.length; i += 1) {
+        const song = this.listSong[i];
+        const matchTitle = song.title.toLowerCase().includes(trimmed);
         const matchTitleJp =
-          song.title_jp?.toLowerCase().includes(lowerQuery) ?? false;
+          song.title_jp?.toLowerCase().includes(trimmed) ?? false;
         const matchArtist =
-          song.artist?.name.toLowerCase().includes(lowerQuery) ?? false;
+          song.artist?.name.toLowerCase().includes(trimmed) ?? false;
         const matchAnime =
-          song.anime?.title.toLowerCase().includes(lowerQuery) ?? false;
-        return matchTitle || matchTitleJp || matchArtist || matchAnime;
-      });
+          song.anime?.title.toLowerCase().includes(trimmed) ?? false;
+        if (matchTitle || matchTitleJp || matchArtist || matchAnime) {
+          listResult.push(song);
+        }
+      }
 
       return listResult;
     },

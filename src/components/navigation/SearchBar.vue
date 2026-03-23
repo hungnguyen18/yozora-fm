@@ -14,18 +14,15 @@ const playerStore = usePlayerStore();
 const isExpanded = ref(false);
 const query = ref('');
 const listResult = ref<ISong[]>([]);
-const isSearching = ref(false);
 const inputRef = ref<HTMLInputElement | null>(null);
 
 // Debounced search (300ms)
-const doSearch = useDebounceFn(async () => {
+const doSearch = useDebounceFn(() => {
   if (query.value.trim().length < 2) {
     listResult.value = [];
     return;
   }
-  isSearching.value = true;
-  listResult.value = await songsStore.searchSongs(query.value);
-  isSearching.value = false;
+  listResult.value = songsStore.searchSongs(query.value);
 }, 300);
 
 watch(query, () => doSearch());
@@ -142,16 +139,10 @@ useEventListener(window, 'keydown', onKeyDown);
 
           <!-- Results dropdown -->
           <div
-            v-if="isSearching || listResult.length > 0"
+            v-if="listResult.length > 0"
             class="search-results"
           >
-            <!-- Loading state -->
-            <div v-if="isSearching" class="search-loading">
-              <div class="search-loading-dot" />
-              <span>Searching...</span>
-            </div>
-
-            <template v-else>
+            <template>
               <!-- Songs group -->
               <div v-if="listResult.length > 0">
                 <div class="search-group-header">
@@ -208,7 +199,7 @@ useEventListener(window, 'keydown', onKeyDown);
 
           <!-- Empty state hint -->
           <div
-            v-if="!isSearching && listResult.length === 0 && query.length === 0"
+            v-if="listResult.length === 0 && query.length === 0"
             class="search-hint"
           >
             Type at least 2 characters to search
@@ -399,28 +390,6 @@ useEventListener(window, 'keydown', onKeyDown);
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 0.125rem;
-}
-
-.search-loading {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  font-size: 0.875rem;
-  color: #9b9bb4;
-}
-
-.search-loading-dot {
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 50%;
-  background: #4f46e5;
-  animation: search-pulse 1s ease-in-out infinite;
-}
-
-@keyframes search-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 
 .search-hint {
