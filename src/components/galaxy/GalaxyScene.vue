@@ -67,6 +67,11 @@ const {
 // Star labels computed inside StarField and accessed via template ref
 const visibleLabels = computed(() => starFieldRef.value?.visibleLabels ?? []);
 
+// Cursor style: pointer when hovering a star, grab otherwise
+const cursorStyle = computed(() =>
+  hoveredInstanceId.value !== null ? 'pointer' : 'grab',
+);
+
 const onWheel = (e: WheelEvent) => {
   e.preventDefault();
   const factor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -115,6 +120,7 @@ const onTresReady = (ctx: TresContext) => {
 <template>
   <div
     class="galaxy-canvas-wrapper"
+    :style="{ cursor: cursorStyle }"
     @wheel.prevent="onWheel"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
@@ -182,7 +188,6 @@ const onTresReady = (ctx: TresContext) => {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  cursor: grab;
   user-select: none;
   position: relative;
 }

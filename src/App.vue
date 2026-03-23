@@ -6,6 +6,7 @@ import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';
 import EraIndicator from '@/components/navigation/EraIndicator.vue';
 import EraSummary from '@/components/navigation/EraSummary.vue';
+import GenreLegend from '@/components/navigation/GenreLegend.vue';
 import Minimap from '@/components/navigation/Minimap.vue';
 import SearchBar from '@/components/navigation/SearchBar.vue';
 import AuthButton from '@/components/ui/AuthButton.vue';
@@ -18,6 +19,12 @@ const authStore = useAuthStore();
 const songsStore = useSongsStore();
 
 const isLoading = computed(() => songsStore.isLoading);
+
+// Format song count with locale separators (e.g. "9,111")
+const songCountLabel = computed(() => {
+  const count = songsStore.listSong.length;
+  return count > 0 ? `${count.toLocaleString()} stars to explore` : 'Stars to explore';
+});
 
 // Onboarding tooltip: show once per browser session
 const ONBOARDING_KEY = 'yozora_hasSeenOnboarding';
@@ -59,6 +66,7 @@ onMounted(async () => {
     <EraIndicator />
     <EraSummary />
     <Minimap />
+    <GenreLegend />
     <AuthButton v-if="!authStore.isAuthenticated" />
     <UserMenu v-else />
 
@@ -69,7 +77,7 @@ onMounted(async () => {
         class="onboarding-tooltip"
         @click="dismissOnboarding"
       >
-        Scroll to zoom &bull; Drag to pan &bull; Click a star to listen
+        {{ songCountLabel }} &bull; Scroll to zoom &bull; Drag to pan &bull; Click a star to listen
       </div>
     </Transition>
   </div>

@@ -119,17 +119,25 @@ const buildMesh = () => {
     scene.value.add(mesh);
   }
 
-  console.log(`StarField: added ${count} stars to scene`);
+  if (import.meta.env.DEV) {
+    console.log(`StarField: added ${count} stars to scene`);
+  }
 
   // Re-apply active star highlight after mesh rebuild
   previousActiveInstanceId = null;
 };
 
-onMounted(async () => {
-  if (songsStore.listSong.length === 0) {
-    await songsStore.fetchSongs();
+// Track whether we have already built the mesh to prevent duplicate builds.
+// App.vue calls fetchSongs() and StarField watches the song list — without
+// this guard both onMounted and the watcher could trigger buildMesh().
+let meshBuilt = false;
+
+onMounted(() => {
+  // If songs were already fetched by App.vue, build immediately
+  if (songsStore.listSong.length > 0 && !meshBuilt) {
+    meshBuilt = true;
+    buildMesh();
   }
-  buildMesh();
 });
 
 onUnmounted(() => {
@@ -138,11 +146,13 @@ onUnmounted(() => {
   }
 });
 
-// Rebuild mesh if songs are loaded after mount (e.g. slow network)
+// Build mesh once songs become available (e.g. slow network, or loaded
+// after mount). The meshBuilt guard prevents a redundant second build.
 watch(
   () => songsStore.listSong.length,
   (newLen, oldLen) => {
-    if (newLen > 0 && oldLen === 0) {
+    if (newLen > 0 && oldLen === 0 && !meshBuilt) {
+      meshBuilt = true;
       buildMesh();
     }
   },
