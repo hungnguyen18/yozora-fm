@@ -5,6 +5,7 @@ const props = defineProps<{ isLoading: boolean }>();
 
 const isVisible = ref(true);
 const isExiting = ref(false);
+let hasBeenLoading = false;
 
 const beginExit = () => {
   if (isExiting.value) { return; }
@@ -14,13 +15,16 @@ const beginExit = () => {
   }, 900);
 };
 
-// When isLoading becomes false, play exit animation then hide.
-// `immediate: true` covers the edge case where isLoading is already
-// false on mount (e.g. songs were cached or fetched extremely fast).
+// Only dismiss after loading has actually started then finished.
+// This prevents the screen from disappearing immediately when
+// isLoading starts as false (before fetchSongs sets it to true).
 watch(
   () => props.isLoading,
   (loading) => {
-    if (!loading) {
+    if (loading) {
+      hasBeenLoading = true;
+    }
+    if (!loading && hasBeenLoading) {
       beginExit();
     }
   },

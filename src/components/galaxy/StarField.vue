@@ -159,7 +159,7 @@ watch(
 );
 
 // Hover visual feedback: scale up the hovered star and restore the previous one
-const HOVER_SCALE_MULTIPLIER = 2.5;
+const HOVER_SCALE_MULTIPLIER = 3.5;
 const matrixHelper = new THREE.Matrix4();
 const posHelper = new THREE.Vector3();
 const quatHelper = new THREE.Quaternion();

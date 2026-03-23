@@ -5,12 +5,13 @@ import { usePlayerStore } from "@/stores/player";
 import { useSongsStore } from "@/stores/songs";
 import type { IStarSpatialIndex } from "@/composables/useStarSpatialIndex";
 
-// Maximum screen-space distance (pixels) to count as a star click/hover
-const HIT_RADIUS_PX = 24;
+// Maximum screen-space distance (pixels) to count as a star click/hover.
+// Large radius so users can click "near" a star without precision targeting.
+const HIT_RADIUS_PX = 48;
 
 // World-space search radius used to query the spatial grid.
 // This is dynamically scaled by zoom so fewer stars are checked at far zoom.
-const BASE_SEARCH_RADIUS = 80;
+const BASE_SEARCH_RADIUS = 120;
 
 // Throttle hover detection to ~30 fps (33ms)
 const THROTTLE_MS = 33;
