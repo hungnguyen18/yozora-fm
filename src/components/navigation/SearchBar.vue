@@ -216,7 +216,7 @@ useEventListener(window, 'keydown', onKeyDown);
   top: 1rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 30;
+  z-index: 60;
 }
 
 /* --- Collapsed trigger button --- */
@@ -271,7 +271,7 @@ useEventListener(window, 'keydown', onKeyDown);
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 30;
+  z-index: 60;
   display: flex;
   justify-content: center;
   padding-top: 5rem;
