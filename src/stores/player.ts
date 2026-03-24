@@ -10,6 +10,7 @@ export const usePlayerStore = defineStore("player", () => {
   const isPlaying = ref(false);
   const isPip = ref(false);
   const progress = ref(0); // 0–1 representing playback position
+  const commentVersion = ref(0); // bumped when a comment is added locally
 
   // Persisted preferences via useLocalStorage
   const volume = useLocalStorage("yozora_player_volume", 0.8);
@@ -255,6 +256,7 @@ export const usePlayerStore = defineStore("player", () => {
     isPlaying,
     isPip,
     progress,
+    commentVersion,
     volume,
     autoPlay,
     traversalMode,

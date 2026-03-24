@@ -4,6 +4,7 @@ import { formatTimeAgo } from '@vueuse/core';
 import { Flag, Trash2 } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useComments } from '@/composables/useComments';
+import { useGuestIdentity } from '@/composables/useGuestIdentity';
 
 type TCommentListProps = {
   songId: number;
@@ -16,6 +17,7 @@ const songIdRef = toRef(props, 'songId');
 
 const { listComment, isLoading, hasMore, loadMore, addComment, deleteComment, reportComment } =
   useComments(songIdRef);
+const { guestName } = useGuestIdentity();
 
 const newContent = ref('');
 const isSubmitting = ref(false);
@@ -57,7 +59,7 @@ const handleReport = async (commentId: number) => {
     <!-- Comment input — visible for all users (anonymous allowed) -->
     <div class="comment-form">
       <p v-if="!authStore.isAuthenticated" class="comment-form__anon-hint">
-        Posting as Anonymous
+        Posting as {{ guestName }}
       </p>
       <textarea
         v-model="newContent"
@@ -102,11 +104,11 @@ const handleReport = async (commentId: number) => {
             class="comment-item__avatar"
           />
           <span v-else class="comment-item__avatar comment-item__avatar--placeholder">
-            {{ (comment.user?.nickname ?? 'U').charAt(0).toUpperCase() }}
+            {{ (comment.user?.nickname ?? guestName).charAt(0).toUpperCase() }}
           </span>
 
           <span class="comment-item__nickname">
-            {{ comment.user?.nickname ?? 'Anonymous' }}
+            {{ comment.user?.nickname ?? guestName }}
           </span>
           <span class="comment-item__time">
             {{ formatRelativeTime(comment.created_at) }}

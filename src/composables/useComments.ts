@@ -2,13 +2,17 @@ import { ref, watch } from "vue";
 import type { Ref } from "vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
+import { usePlayerStore } from "@/stores/player";
 import { useRealtimeComments } from "@/composables/useRealtime";
+import { useGuestIdentity } from "@/composables/useGuestIdentity";
 import type { IComment } from "@/types";
 
 const PAGE_SIZE = 5;
 
 export const useComments = (songId: Ref<number>) => {
   const authStore = useAuthStore();
+  const playerStore = usePlayerStore();
+  const { guestName } = useGuestIdentity();
   const listComment = ref<IComment[]>([]);
   const isLoading = ref(false);
   const hasMore = ref(true);
@@ -74,9 +78,14 @@ export const useComments = (songId: Ref<number>) => {
     }
 
     // Anonymous comments allowed — user_id is null for guests
+    const displayName = authStore.user
+      ? (authStore.user.nickname ?? "Anonymous")
+      : guestName.value;
+
     const { error } = await supabase.from("comments").insert({
       song_id: songId.value,
       user_id: authStore.user?.id ?? null,
+      guest_name: displayName,
       content: trimmed,
     });
 
@@ -92,6 +101,9 @@ export const useComments = (songId: Ref<number>) => {
     page.value = 0;
     hasMore.value = true;
     await fetchComments(songId.value);
+
+    // Signal OrbitingComments to refresh immediately
+    playerStore.commentVersion += 1;
   };
 
   const deleteComment = async (commentId: number) => {

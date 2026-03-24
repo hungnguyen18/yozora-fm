@@ -3,42 +3,21 @@ import { ref, onMounted, watch } from 'vue';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useSongsStore } from '@/stores/songs';
 import { useExplorerPassport } from '@/composables/useExplorerPassport';
+import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
 
 const galaxyStore = useGalaxyStore();
 const songsStore = useSongsStore();
 const { grid, GRID_SIZE: PASSPORT_GRID_SIZE } = useExplorerPassport();
+const { computeSinglePosition } = useGalaxyLayout();
 
 const CANVAS_SIZE = 100;
 const R_MAX = 500;
 const TOTAL_SPAN_YEARS = 46;
-const MAX_ANGLE_DEG = 1620;
 
 // Sample every Nth star so we draw ~300-500 dots, not all 9111
 const SAMPLE_STEP = 20;
-
-// Genre arm map (must match galaxy store / layout)
-const GENRE_ARM_MAP: Record<string, number> = {
-  rock: 0,
-  electronic: 1,
-  pop: 2,
-  ballad: 3,
-  orchestral: 0,
-  other: 2,
-};
-
-// Mulberry32 seeded PRNG (must match galaxy store)
-const seededRandom = (seed: number): (() => number) => {
-  let s = seed >>> 0;
-  return () => {
-    s += 0x6d2b79f5;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
@@ -96,29 +75,14 @@ const draw = () => {
   if (listSong.length > 0) {
     for (let i = 0; i < listSong.length; i += SAMPLE_STEP) {
       const song = listSong[i];
-      const year = song.year ?? 1980;
-      const clampedYear = Math.max(1980, Math.min(year, 1980 + TOTAL_SPAN_YEARS));
-      const normalised = (clampedYear - 1980) / TOTAL_SPAN_YEARS;
+      const pos = computeSinglePosition(
+        song.id,
+        song.year ?? 1980,
+        song.genre as TGenre | undefined,
+      );
 
-      const baseAngleDeg = normalised * MAX_ANGLE_DEG;
-      const baseRadius = R_MAX * (1 - normalised);
-
-      const armIndex = GENRE_ARM_MAP[song.genre ?? 'other'] ?? 2;
-      const armOffsetDeg = armIndex * 90;
-
-      const rng = seededRandom(song.id);
-      const angleJitterDeg = (rng() * 2 - 1) * 25;
-      const radiusJitterPct = (rng() * 2 - 1) * 0.15;
-
-      const angleDeg = baseAngleDeg + armOffsetDeg + angleJitterDeg;
-      const angleRad = (angleDeg * Math.PI) / 180;
-      const radius = baseRadius * (1 + radiusJitterPct);
-
-      const worldX = radius * Math.cos(angleRad);
-      const worldY = radius * Math.sin(angleRad);
-
-      const cx = worldToCanvas(worldX);
-      const cy = worldToCanvas(-worldY);
+      const cx = worldToCanvas(pos.x);
+      const cy = worldToCanvas(-pos.y);
 
       const genreKey = (song.genre ?? 'other') as TGenre;
       const hexColor = GENRE_COLOR_MAP[genreKey] ?? GENRE_COLOR_MAP.other;

@@ -16,6 +16,7 @@ import ConstellationLines from './ConstellationLines.vue';
 import Nebula from './Nebula.vue';
 import ParticleDust from './ParticleDust.vue';
 import RippleEffect from './RippleEffect.vue';
+import OrbitingComments from './OrbitingComments.vue';
 import SessionTrail from './SessionTrail.vue';
 import DecadeRings from './DecadeRings.vue';
 import StarField from './StarField.vue';
@@ -211,12 +212,15 @@ const onTresReady = (ctx: TresContext) => {
       <!-- Session trail: glowing line connecting played stars in order -->
       <SessionTrail />
 
-      <!-- Ripple rings: expanding concentric rings around the currently playing star -->
+      <!-- Ripple: shader glow around active star -->
       <RippleEffect />
 
       <!-- Constellation lines: connects stars of the same artist, revealed on hover -->
       <ConstellationLines />
     </TresCanvas>
+
+    <!-- Orbiting comment bubbles (HTML overlay) -->
+    <OrbitingComments />
 
     <!-- HTML tooltip overlay: follows the mouse, shows song title on hover -->
     <div

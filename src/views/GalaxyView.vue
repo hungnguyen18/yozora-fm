@@ -17,21 +17,21 @@ import LoadingScreen from '@/components/ui/LoadingScreen.vue';
 import DiscoveryCounter from '@/components/ui/DiscoveryCounter.vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
-import { useSongsStore } from '@/stores/songs';
+import { useGalaxyDataStore } from '@/stores/galaxy-data';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
 import { useRouting } from '@/composables/useRouting';
 import { useDiscovery } from '@/composables/useDiscovery';
 import { useExplorerPassport } from '@/composables/useExplorerPassport';
 
 const authStore = useAuthStore();
-const songsStore = useSongsStore();
+const galaxyDataStore = useGalaxyDataStore();
 
 useKeyboardNav();
 useRouting();
 useDiscovery();
 useExplorerPassport();
 
-const isLoading = computed(() => songsStore.isLoading);
+const isLoading = computed(() => galaxyDataStore.isLoading);
 
 // ── UI Visibility: auto-hide after idle, toggle with H key ──
 const isUIVisible = ref(true);
@@ -76,7 +76,7 @@ onUnmounted(() => {
 
 // Format song count with locale separators (e.g. "9,111")
 const songCountLabel = computed(() => {
-  const count = songsStore.listSong.length;
+  const count = galaxyDataStore.listStar.length;
   return count > 0 ? `${count.toLocaleString()} stars to explore` : 'Stars to explore';
 });
 
@@ -114,9 +114,11 @@ onMounted(() => {
     <DetailPanel />
     <PipPlayer />
 
+    <!-- Search: outside overlay-ui, trigger fades with UI -->
+    <SearchBar :is-visible="isUIVisible" />
+
     <!-- Overlay UI — hidden during loading, fades on idle, toggle with H key -->
     <div class="overlay-ui" :class="{ 'overlay-ui--hidden': !isUIVisible || isLoading }">
-      <SearchBar />
       <Minimap />
       <GenreLegend />
       <RandomPlayButton />

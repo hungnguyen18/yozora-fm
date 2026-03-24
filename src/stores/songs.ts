@@ -2,22 +2,40 @@ import { defineStore } from "pinia";
 import { supabase } from "@/lib/supabase";
 import type { ISong } from "@/types";
 
+// Slim select: only fields needed for search, hover, and player.
+// Full metadata (images, URLs) loaded on demand via fetchSongDetail().
+const SLIM_SELECT = [
+  "id",
+  "title",
+  "title_jp",
+  "type",
+  "sequence",
+  "year",
+  "genre",
+  "vote_count",
+  "animethemes_slug",
+  "artist_id",
+  "anime_id",
+  "artist:artists(id, name)",
+  "anime:animes(id, title, season)",
+].join(", ");
+
 export const useSongsStore = defineStore("songs", {
   state: () => ({
     listSong: [] as ISong[],
+    mapDetail: new Map<number, ISong>(),
     isLoading: false,
     error: null as string | null,
   }),
+
   actions: {
     async fetchSongs() {
-      // Skip if already loaded
       if (this.listSong.length > 0) {
         return;
       }
       this.isLoading = true;
       this.error = null;
 
-      // Supabase returns max 1000 rows per query — paginate to get all
       const PAGE_SIZE = 1000;
       const allSongs: ISong[] = [];
       let page = 0;
@@ -29,7 +47,7 @@ export const useSongsStore = defineStore("songs", {
 
         const { data, error } = await supabase
           .from("songs")
-          .select("*, artist:artists(*), anime:animes(*)")
+          .select(SLIM_SELECT)
           .order("year", { ascending: true })
           .range(from, to);
 
@@ -39,13 +57,45 @@ export const useSongsStore = defineStore("songs", {
           return;
         }
 
-        allSongs.push(...((data as ISong[]) ?? []));
+        allSongs.push(...((data as unknown as ISong[]) ?? []));
         hasMore = (data?.length ?? 0) === PAGE_SIZE;
         page += 1;
       }
 
       this.listSong = allSongs;
       this.isLoading = false;
+    },
+
+    /**
+     * Fetch full song detail (all columns + artist + anime joins).
+     * Cached in mapDetail — only fetched once per song.
+     */
+    async fetchSongDetail(songId: number): Promise<ISong | null> {
+      // Return cached detail if available
+      if (this.mapDetail.has(songId)) {
+        return this.mapDetail.get(songId)!;
+      }
+
+      const { data, error } = await supabase
+        .from("songs")
+        .select("*, artist:artists(*), anime:animes(*)")
+        .eq("id", songId)
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      const song = data as ISong;
+      this.mapDetail.set(songId, song);
+
+      // Also update the slim entry in listSong with full data
+      const idx = this.listSong.findIndex((s) => s.id === songId);
+      if (idx !== -1) {
+        this.listSong[idx] = song;
+      }
+
+      return song;
     },
 
     async fetchSongsByEra(decade: number) {
@@ -57,7 +107,7 @@ export const useSongsStore = defineStore("songs", {
 
       const { data, error } = await supabase
         .from("songs")
-        .select("*, artist:artists(*), anime:animes(*)")
+        .select(SLIM_SELECT)
         .gte("year", startYear)
         .lte("year", endYear)
         .order("year", { ascending: true });
@@ -65,7 +115,7 @@ export const useSongsStore = defineStore("songs", {
       if (error) {
         this.error = error.message;
       } else {
-        this.listSong = (data as ISong[]) ?? [];
+        this.listSong = (data as unknown as ISong[]) ?? [];
       }
 
       this.isLoading = false;
@@ -77,9 +127,6 @@ export const useSongsStore = defineStore("songs", {
         return [];
       }
 
-      // Search the already-loaded song list (avoids DB round-trip and
-      // fixes the bug where artist/anime-only matches were never returned
-      // because the old Supabase .or() only filtered on title columns).
       const listResult: ISong[] = [];
       for (let i = 0; i < this.listSong.length; i += 1) {
         const song = this.listSong[i];

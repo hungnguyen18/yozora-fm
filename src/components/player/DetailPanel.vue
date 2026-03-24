@@ -96,6 +96,10 @@ const genreTags = computed(() => {
   return [song.value.genre];
 });
 
+const onPanelMouseEnter = () => {
+  galaxyStore.hoveredStarId = null;
+};
+
 const close = () => {
   if (playerStore.isPlaying) {
     playerStore.isPip = true;
@@ -163,6 +167,7 @@ const shareSong = async () => {
       class="detail-panel"
       role="complementary"
       aria-label="Song detail"
+      @mouseenter="onPanelMouseEnter"
     >
       <!-- Accent line at top — genre colored -->
       <div

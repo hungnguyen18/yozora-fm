@@ -8,7 +8,8 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "seed": "tsx scripts/seed/index.ts",
-    "enrich:genres": "tsx scripts/enrich-genres.ts"
+    "enrich:genres": "tsx scripts/enrich-genres.ts",
+    "build:galaxy": "tsx scripts/build-galaxy-data.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",

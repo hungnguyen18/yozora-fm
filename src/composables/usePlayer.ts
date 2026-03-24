@@ -46,6 +46,7 @@ let watcherInstalled = false;
 let pendingSong: ISong | null = null;
 let skipNextWatcherPlay = false;
 let crossfadeRafId = 0;
+let crossfadeCleanup: (() => void) | null = null;
 
 // Helper: clean up canplay/error listeners
 const cleanupVideoListeners = (
@@ -218,6 +219,10 @@ export const usePlayer = () => {
   };
 
   const cancelCrossfade = (): void => {
+    if (crossfadeCleanup) {
+      crossfadeCleanup();
+      crossfadeCleanup = null;
+    }
     if (crossfadeRafId) {
       cancelAnimationFrame(crossfadeRafId);
       crossfadeRafId = 0;
@@ -276,6 +281,25 @@ export const usePlayer = () => {
     playerStore.isPlaying = true;
   };
 
+  const finishCrossfadeSwap = (
+    outgoing: HTMLVideoElement | null,
+    incoming: HTMLVideoElement | null,
+    targetVolume: number,
+  ): void => {
+    if (outgoing) {
+      outgoing.pause();
+      outgoing.src = "";
+      outgoing.load();
+    }
+    if (incoming) {
+      incoming.volume = Math.min(Math.max(targetVolume, 0), 1);
+    }
+    activeVideo.value = activeVideo.value === "A" ? "B" : "A";
+    isCrossfading.value = false;
+    updateVideoVisibility();
+    playerStore.isPlaying = true;
+  };
+
   const crossfadeTo = (song: ISong): void => {
     const url = getVideoUrl(song);
     if (!url) {
@@ -312,9 +336,16 @@ export const usePlayer = () => {
       });
     }
 
+    const targetVolume = playerStore.volume;
+
+    // Background tab: rAF is throttled/paused — skip animation, instant swap
+    if (document.hidden) {
+      finishCrossfadeSwap(outgoing, incoming, targetVolume);
+      return;
+    }
+
     const FADE_DURATION = 2000;
     const startTime = performance.now();
-    const targetVolume = playerStore.volume;
 
     const fade = (now: number): void => {
       const elapsed = now - startTime;
@@ -334,19 +365,30 @@ export const usePlayer = () => {
         crossfadeRafId = requestAnimationFrame(fade);
       } else {
         crossfadeRafId = 0;
-        if (outgoing) {
-          outgoing.pause();
-          outgoing.src = "";
-          outgoing.load();
+        if (crossfadeCleanup) {
+          crossfadeCleanup();
+          crossfadeCleanup = null;
         }
-        activeVideo.value = activeVideo.value === "A" ? "B" : "A";
-        isCrossfading.value = false;
-        updateVideoVisibility();
-        playerStore.isPlaying = true;
+        finishCrossfadeSwap(outgoing, incoming, targetVolume);
       }
     };
 
     crossfadeRafId = requestAnimationFrame(fade);
+
+    // If tab becomes hidden mid-crossfade, finish instantly
+    const onVisibilityChange = (): void => {
+      if (document.hidden && crossfadeRafId) {
+        cancelAnimationFrame(crossfadeRafId);
+        crossfadeRafId = 0;
+        finishCrossfadeSwap(outgoing, incoming, targetVolume);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+        crossfadeCleanup = null;
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    crossfadeCleanup = () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   };
 
   const pause = (): void => {

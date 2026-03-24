@@ -175,6 +175,12 @@ export const useStarInteraction = (
     if (instanceId >= 0) {
       const song = songsStore.listSong[instanceId];
       if (song) {
+        // Clear hover state immediately — the detail panel is about to
+        // cover part of the canvas so the user can't "un-hover" naturally.
+        hoveredInstanceId.value = null;
+        galaxyStore.hoveredStarId = null;
+        tooltipVisible.value = false;
+
         galaxyStore.flyToStar(song.id);
         playerStore.play(song);
       }

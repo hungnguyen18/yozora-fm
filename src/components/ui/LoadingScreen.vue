@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, computed, onBeforeUnmount } from 'vue';
-import { useSongsStore } from '@/stores/songs';
+import { useGalaxyDataStore } from '@/stores/galaxy-data';
 
 const props = defineProps<{ isLoading: boolean }>();
 
-const songsStore = useSongsStore();
+const galaxyDataStore = useGalaxyDataStore();
 
 const isVisible = ref(true);
 const isExiting = ref(false);
@@ -21,7 +21,7 @@ const starCountText = computed(() => {
 
 // Animate the counter toward the actual song count
 watch(
-  () => songsStore.listSong.length,
+  () => galaxyDataStore.listStar.length,
   (target) => {
     if (target === 0) { return; }
     if (countInterval) { clearInterval(countInterval); }
@@ -44,33 +44,51 @@ onBeforeUnmount(() => {
 
 // Progress bar: show real progress (0-100) based on songs loaded vs expected total
 const progressPercent = computed(() => {
-  const count = songsStore.listSong.length;
+  const count = galaxyDataStore.listStar.length;
   if (count === 0) { return 0; }
   // Estimate ~9000 songs total; cap at 100
   const estimated = 9000;
   return Math.min(100, Math.round((count / estimated) * 100));
 });
 
+// Minimum time the loading screen stays visible (ms).
+// Even on fast CDN loads, users should see the branded intro.
+const MIN_DISPLAY_MS = 1500;
+const mountTime = Date.now();
+
 const beginExit = () => {
   if (isExiting.value) { return; }
+
+  // Ensure minimum display time
+  const elapsed = Date.now() - mountTime;
+  if (elapsed < MIN_DISPLAY_MS) {
+    setTimeout(beginExit, MIN_DISPLAY_MS - elapsed);
+    return;
+  }
+
   isExiting.value = true;
   setTimeout(() => {
     isVisible.value = false;
   }, 900);
 };
 
-// Only dismiss after loading has actually started then finished.
-// This prevents the screen from disappearing immediately when
-// isLoading starts as false (before fetchSongs sets it to true).
+// Dismiss once galaxy data has loaded (stars available for rendering).
+watch(
+  () => galaxyDataStore.listStar.length,
+  (count) => {
+    if (count > 0) {
+      beginExit();
+    }
+  },
+  { immediate: true },
+);
+
+// Also watch the prop as a fallback
 watch(
   () => props.isLoading,
   (loading) => {
-    if (loading) {
-      hasBeenLoading = true;
-    }
-    if (!loading && hasBeenLoading) {
-      beginExit();
-    }
+    if (loading) { hasBeenLoading = true; }
+    if (!loading && hasBeenLoading) { beginExit(); }
   },
   { immediate: true },
 );

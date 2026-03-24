@@ -6,6 +6,7 @@ import { ref, shallowRef, triggerRef, computed, watch, onMounted, onUnmounted, m
 import * as THREE from 'three';
 import { useLoop, useTresContext } from '@tresjs/core';
 import { useSongsStore } from '@/stores/songs';
+import { useGalaxyDataStore } from '@/stores/galaxy-data';
 import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useGalaxyLayout } from '@/composables/useGalaxyLayout';
@@ -14,6 +15,7 @@ import { useStarSpatialIndex } from '@/composables/useStarSpatialIndex';
 import { useDiscovery } from '@/composables/useDiscovery';
 
 const songsStore = useSongsStore();
+const galaxyDataStore = useGalaxyDataStore();
 const playerStore = usePlayerStore();
 const galaxyStore = useGalaxyStore();
 const { computeBuffers } = useGalaxyLayout();
@@ -165,7 +167,7 @@ const createStarMaterial = (): THREE.ShaderMaterial => {
 // Build the InstancedMesh and apply per-instance transforms and colours.
 // Writes directly to typed buffers to bypass Vue reactivity overhead.
 const buildMesh = () => {
-  const listSong = songsStore.listSong;
+  const listSong = galaxyDataStore.listStar;
   if (listSong.length === 0) { return; }
 
   const { matrices, colors, sizes, count } = computeBuffers(listSong);
@@ -260,8 +262,8 @@ const buildMesh = () => {
 let meshBuilt = false;
 
 onMounted(() => {
-  // If songs were already fetched by App.vue, build immediately
-  if (songsStore.listSong.length > 0 && !meshBuilt) {
+  // If galaxy data was already fetched, build immediately
+  if (galaxyDataStore.listStar.length > 0 && !meshBuilt) {
     meshBuilt = true;
     buildMesh();
   }
@@ -276,7 +278,7 @@ onUnmounted(() => {
 // Build mesh once songs become available (e.g. slow network, or loaded
 // after mount). The meshBuilt guard prevents a redundant second build.
 watch(
-  () => songsStore.listSong.length,
+  () => galaxyDataStore.listStar.length,
   (newLen, oldLen) => {
     if (newLen > 0 && oldLen === 0 && !meshBuilt) {
       meshBuilt = true;
@@ -332,10 +334,10 @@ watch(
   },
 );
 
-// Active star visual: brighter colour (white) and 1.5x scale when a song is playing.
-// Distinct from hover — hover uses HOVER_SCALE_MULTIPLIER; active is always 1.5x base.
-const ACTIVE_SCALE_MULTIPLIER = 1.5;
-const activeColor = new THREE.Color(1, 1, 1); // bright white
+// Active star visual: super-bright with large scale — the brightest star in the sky.
+// With additive blending, color values >1.0 create a natural bloom/glow effect.
+const ACTIVE_SCALE_MULTIPLIER = 3.5;
+const activeColor = new THREE.Color(3.0, 2.8, 2.2); // intense overexposed warm → heavy bloom
 const activeColorHelper = new THREE.Color();
 let previousActiveInstanceId: number | null = null;
 
@@ -364,8 +366,8 @@ const getEffectiveColor = (instanceId: number): { r: number; g: number; b: numbe
   // Genre filter dimming
   const genre = galaxyStore.highlightedGenre;
   if (genre !== null) {
-    const song = songsStore.listSong[instanceId];
-    if (!song || song.genre !== genre) {
+    const star = galaxyDataStore.listStar[instanceId];
+    if (!star || star.genre !== genre) {
       dim = 0.2;
     }
   }
@@ -373,8 +375,8 @@ const getEffectiveColor = (instanceId: number): { r: number; g: number; b: numbe
   // Constellation focus dimming — non-artist stars dim to 30%
   const focusedArtistId = galaxyStore.focusedArtistId;
   if (focusedArtistId !== null) {
-    const song = songsStore.listSong[instanceId];
-    if (!song || song.artist_id !== focusedArtistId) {
+    const star = galaxyDataStore.listStar[instanceId];
+    if (!star || star.artistId !== focusedArtistId) {
       dim = Math.min(dim, 0.3);
     }
   }
@@ -403,9 +405,8 @@ watch(
 
     if (!song) { return; }
 
-    // Find instance index matching the playing song
-    const listSong = songsStore.listSong;
-    const instanceId = listSong.findIndex((s) => s.id === song.id);
+    // Find instance index matching the playing song (O(1) via map)
+    const instanceId = galaxyDataStore.mapIdToIndex.get(song.id) ?? -1;
     if (instanceId === -1) { return; }
 
     // Brighten to white and scale up
@@ -422,9 +423,9 @@ watch(
   () => {
     const mesh = instancedMesh.value;
     if (!mesh) { return; }
-    const listSong = songsStore.listSong;
+    const listStar = galaxyDataStore.listStar;
 
-    for (let i = 0; i < listSong.length; i += 1) {
+    for (let i = 0; i < listStar.length; i += 1) {
       const effective = getEffectiveColor(i);
       if (!effective) { continue; }
       setInstanceColor(mesh, i, effective.r, effective.g, effective.b);
@@ -443,9 +444,9 @@ watch(
   () => {
     const mesh = instancedMesh.value;
     if (!mesh) { return; }
-    const listSong = songsStore.listSong;
+    const listStar = galaxyDataStore.listStar;
 
-    for (let i = 0; i < listSong.length; i += 1) {
+    for (let i = 0; i < listStar.length; i += 1) {
       const effective = getEffectiveColor(i);
       if (!effective) { continue; }
       setInstanceColor(mesh, i, effective.r, effective.g, effective.b);
@@ -471,8 +472,7 @@ watch(lastDiscoveryId, (songId) => {
   const mesh = instancedMesh.value;
   if (!mesh) { return; }
 
-  const listSong = songsStore.listSong;
-  const instanceId = listSong.findIndex((s) => s.id === songId);
+  const instanceId = galaxyDataStore.mapIdToIndex.get(songId) ?? -1;
   if (instanceId === -1) { return; }
 
   discoveryBurstInstanceId = instanceId;
@@ -578,14 +578,14 @@ onBeforeRender(({ delta }) => {
     const burstScale = baseScale * (1 + (DISCOVERY_BURST_SCALE - 1) * (1 - ease));
     setInstanceScale(mesh, discoveryBurstInstanceId, burstScale);
 
-    // Color: gold lerping back to white (active star color)
+    // Color: gold lerping back to active bloom color
     const goldLerp = 1 - ease;
     setInstanceColor(
       mesh,
       discoveryBurstInstanceId,
-      1.0,
-      1.0 - (1.0 - discoveryGoldColor.g) * goldLerp,
-      1.0 - (1.0 - discoveryGoldColor.b) * goldLerp,
+      activeColor.r,
+      activeColor.g - (activeColor.g - discoveryGoldColor.g) * goldLerp,
+      activeColor.b - (activeColor.b - discoveryGoldColor.b) * goldLerp,
     );
 
     if (t >= 1) {
@@ -618,9 +618,9 @@ onBeforeRender(({ delta }) => {
     const pulseScale = baseScale * ACTIVE_SCALE_MULTIPLIER * (1 + beat * 0.15);
     setInstanceScale(mesh, previousActiveInstanceId, pulseScale);
 
-    // Subtle brightness pulse: lerp between white and slightly brighter white
-    const brightness = 0.85 + beat * 0.15;
-    setInstanceColor(mesh, previousActiveInstanceId, brightness, brightness, brightness);
+    // Brightness pulse: breathe between bright and intense bloom
+    const pulse = 2.2 + beat * 0.8;
+    setInstanceColor(mesh, previousActiveInstanceId, pulse, pulse * 0.95, pulse * 0.75);
   }
 
   // Apply star scale cap only when zoom crosses a significant threshold
@@ -747,20 +747,23 @@ const visibleLabels = computed<IStarLabel[]>(() => {
   const camera = props.camera;
   if (!camera) { return []; }
 
+  // Labels need song titles from songsStore (loaded in parallel after galaxy data)
   const listSong = songsStore.listSong;
+  const listStar = galaxyDataStore.listStar;
   const worldPositions = listStarWorldPosition.value;
   const threshold = labelVoteThreshold.value;
   const maxCount = labelMaxCount.value;
 
+  // Labels only show after search data is loaded (has titles)
   if (listSong.length === 0 || worldPositions.length === 0 || maxCount === 0) { return []; }
 
-  // Collect candidates that pass the vote threshold and are on screen
   const listCandidate: (IStarLabel & { voteCount: number })[] = [];
 
-  for (let i = 0; i < listSong.length; i += 1) {
-    const song = listSong[i];
+  for (let i = 0; i < listStar.length; i += 1) {
+    const star = listStar[i];
+    const song = listSong[i]; // may not exist yet if song list order differs
 
-    if (song.vote_count < threshold) { continue; }
+    if (star.voteCount < threshold) { continue; }
 
     const worldPos = worldPositions[i];
     if (!worldPos) { continue; }
@@ -771,9 +774,9 @@ const visibleLabels = computed<IStarLabel[]>(() => {
     listCandidate.push({
       x: screenPos.x,
       y: screenPos.y,
-      text: song.title,
-      songId: song.id,
-      voteCount: song.vote_count,
+      text: song?.title ?? `Star #${star.id}`,
+      songId: star.id,
+      voteCount: star.voteCount,
     });
   }
 
