@@ -410,19 +410,26 @@ const classifyGenre = (
 };
 
 // ---------------------------------------------------------------------------
-// Fetch songs with genre IS NULL
+// Fetch songs — all songs when --force, otherwise only genre IS NULL
 // ---------------------------------------------------------------------------
 
-const fetchSongsWithoutGenre = async (): Promise<ISongRow[]> => {
+const FORCE_MODE = process.argv.includes("--force");
+
+const fetchSongs = async (): Promise<ISongRow[]> => {
   const listSong: ISongRow[] = [];
   let from = 0;
 
   while (true) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("songs")
       .select("id, type, anime_id, artist_id")
-      .is("genre", null)
       .range(from, from + FETCH_BATCH_SIZE - 1);
+
+    if (!FORCE_MODE) {
+      query = query.is("genre", null);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(`Failed to fetch songs: ${error.message}`);
@@ -527,10 +534,14 @@ const fetchArtists = async (): Promise<Map<number, IArtistRow>> => {
 const run = async (): Promise<void> => {
   const startTime = Date.now();
 
-  // Step 1: Fetch songs without genre
-  console.log("Fetching songs without genre...");
-  const listSong = await fetchSongsWithoutGenre();
-  console.log(`Found ${listSong.length} songs without genre.\n`);
+  // Step 1: Fetch songs
+  if (FORCE_MODE) {
+    console.log("FORCE MODE — re-classifying ALL songs...");
+  } else {
+    console.log("Fetching songs without genre...");
+  }
+  const listSong = await fetchSongs();
+  console.log(`Found ${listSong.length} songs to classify.\n`);
 
   if (listSong.length === 0) {
     console.log("Nothing to do — all songs already have a genre.");
