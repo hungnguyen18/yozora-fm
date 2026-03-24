@@ -1,23 +1,23 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const MAX_SONGS = 2000;
 const RATE_LIMIT_DELAY_MS = 100;
 const LOG_INTERVAL = 100;
+const CACHE_SAVE_INTERVAL = 200;
 // Resolve __dirname in both ESM (import.meta.url) and CJS contexts
 const _dirname =
-  typeof __dirname !== 'undefined'
+  typeof __dirname !== "undefined"
     ? __dirname
     : path.dirname(fileURLToPath(import.meta.url));
-const CACHE_DIR = path.resolve(_dirname, '.cache');
-const CACHE_FILE = path.join(CACHE_DIR, 'spotify.json');
-const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
-const SPOTIFY_SEARCH_URL = 'https://api.spotify.com/v1/search';
+const CACHE_DIR = path.resolve(_dirname, ".cache");
+const CACHE_FILE = path.join(CACHE_DIR, "spotify.json");
+const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
+const SPOTIFY_SEARCH_URL = "https://api.spotify.com/v1/search";
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -64,10 +64,10 @@ const loadCache = (): TCacheData => {
     return {};
   }
   try {
-    const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
+    const raw = fs.readFileSync(CACHE_FILE, "utf-8");
     return JSON.parse(raw) as TCacheData;
   } catch {
-    console.warn('[spotify] Failed to parse cache file — starting fresh.');
+    console.warn("[spotify] Failed to parse cache file — starting fresh.");
     return {};
   }
 };
@@ -76,7 +76,7 @@ const saveCache = (cache: TCacheData): void => {
   if (!fs.existsSync(CACHE_DIR)) {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
   }
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8');
+  fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), "utf-8");
 };
 
 // ---------------------------------------------------------------------------
@@ -87,15 +87,17 @@ const fetchAccessToken = async (
   clientId: string,
   clientSecret: string,
 ): Promise<string | null> => {
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+    "base64",
+  );
 
   const response = await fetch(SPOTIFY_TOKEN_URL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: 'grant_type=client_credentials',
+    body: "grant_type=client_credentials",
   });
 
   if (!response.ok) {
@@ -142,7 +144,7 @@ const searchTrack = async (
     return null;
   }
 
-  const albumArtUrl = track.album.images[0]?.url ?? '';
+  const albumArtUrl = track.album.images[0]?.url ?? "";
 
   return {
     spotifyUri: track.uri,
@@ -159,19 +161,21 @@ export const enrichWithSpotify = async (
 ): Promise<Map<string, TSpotifyEnrichment>> => {
   const result = new Map<string, TSpotifyEnrichment>();
 
-  const clientId = process.env['SPOTIFY_CLIENT_ID'];
-  const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'];
+  const clientId = process.env["SPOTIFY_CLIENT_ID"];
+  const clientSecret = process.env["SPOTIFY_CLIENT_SECRET"];
 
   if (!clientId || !clientSecret) {
     console.warn(
-      '[spotify] SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not set — skipping enrichment.',
+      "[spotify] SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not set — skipping enrichment.",
     );
     return result;
   }
 
   const token = await fetchAccessToken(clientId, clientSecret);
   if (!token) {
-    console.error('[spotify] Could not obtain access token — returning empty map.');
+    console.error(
+      "[spotify] Could not obtain access token — returning empty map.",
+    );
     return result;
   }
 
@@ -181,19 +185,28 @@ export const enrichWithSpotify = async (
     result.set(key, value);
   }
 
-  // Only process up to MAX_SONGS; skip those already cached
-  const listToProcess = listSong
-    .slice(0, MAX_SONGS)
-    .filter((song) => !result.has(`${song.artistName}|${song.title}`));
+  // Skip songs already in cache
+  const listToProcess = listSong.filter(
+    (song) => !result.has(`${song.artistName}|${song.title}`),
+  );
 
   const total = listToProcess.length;
+  const cached = Object.keys(cache).length;
+  console.log(
+    `[spotify] ${listSong.length} total songs, ${cached} cached, ${total} to fetch`,
+  );
+
+  let found = 0;
 
   for (let i = 0; i < total; i += 1) {
     const song = listToProcess[i];
     const key = `${song.artistName}|${song.title}`;
 
     if (i > 0 && i % LOG_INTERVAL === 0) {
-      console.log(`[spotify] Spotify enrichment: ${i}/${total} songs...`);
+      const pct = ((i / total) * 100).toFixed(1);
+      console.log(
+        `[spotify] Progress: ${i}/${total} (${pct}%) — ${found} found`,
+      );
     }
 
     try {
@@ -201,16 +214,27 @@ export const enrichWithSpotify = async (
       if (enrichment) {
         result.set(key, enrichment);
         cache[key] = enrichment;
+        found += 1;
       }
     } catch (err) {
-      console.warn(`[spotify] Error searching "${song.title}" by "${song.artistName}":`, err);
+      console.warn(
+        `[spotify] Error searching "${song.title}" by "${song.artistName}":`,
+        err,
+      );
+    }
+
+    // Periodically save cache so progress is not lost on interruption
+    if (i > 0 && i % CACHE_SAVE_INTERVAL === 0) {
+      saveCache(cache);
     }
 
     await delay(RATE_LIMIT_DELAY_MS);
   }
 
   if (total > 0) {
-    console.log(`[spotify] Spotify enrichment: ${total}/${total} songs... done.`);
+    console.log(
+      `[spotify] Done: ${total} processed, ${found} found, ${Object.keys(cache).length} total cached`,
+    );
     saveCache(cache);
   }
 
