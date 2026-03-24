@@ -37,6 +37,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 - **Daily Challenge Widget** — Removed for cleaner UI
 
+## [0.1.2] - 2026-03-24
+
+### Added
+
+- Add vue-router, /changelogs page, refactor routing
+
 ## [0.1.1] - 2026-03-24
 
 ### Added
