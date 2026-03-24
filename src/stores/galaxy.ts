@@ -67,9 +67,12 @@ export const useGalaxyStore = defineStore("galaxy", {
       this.constellationData = result;
     },
 
-    flyToStar(songId: number) {
+    flyToStar(songId: number, keepArtistFocus = false) {
       // Clear constellation focus when navigating to a specific star
-      this.focusedArtistId = null;
+      // (unless artist radio mode requested preservation)
+      if (!keepArtistFocus) {
+        this.focusedArtistId = null;
+      }
 
       const target = this.listStarPosition.find((sp) => sp.songId === songId);
       if (!target) {

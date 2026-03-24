@@ -69,12 +69,48 @@ export const usePlayerStore = defineStore("player", () => {
     const songsStore = useSongsStore();
     const galaxyStore = useGalaxyStore();
 
-    const currentYear = currentSong.value.year ?? 1980;
-    const currentDecade = Math.floor(currentYear / 10) * 10;
     const currentId = currentSong.value.id;
 
     // Collect candidates: has video, not recently played, matching mode
     const recentSet = new Set(listRecentId.value);
+
+    // Artist radio: if constellation focus is active, cycle through artist's songs
+    if (galaxyStore.focusedArtistId !== null) {
+      const artistSongIds = galaxyStore.constellationData.get(
+        galaxyStore.focusedArtistId,
+      );
+      if (artistSongIds && artistSongIds.length > 0) {
+        // Find playable songs by this artist, sorted by year
+        const listArtistSong: ISong[] = [];
+        for (let i = 0; i < songsStore.listSong.length; i += 1) {
+          const s = songsStore.listSong[i];
+          if (
+            artistSongIds.includes(s.id) &&
+            s.animethemes_slug &&
+            !recentSet.has(s.id)
+          ) {
+            listArtistSong.push(s);
+          }
+        }
+
+        if (listArtistSong.length > 0) {
+          // Sort by year for chronological playback
+          listArtistSong.sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
+
+          // Pick the first one (chronological order, skipping recently played)
+          const nextSong = listArtistSong[0];
+          play(nextSong);
+          if (!isPip.value) {
+            galaxyStore.flyToStar(nextSong.id, true);
+          }
+          return;
+        }
+      }
+    }
+
+    const currentYear = currentSong.value.year ?? 1980;
+    const currentDecade = Math.floor(currentYear / 10) * 10;
+
     const listCandidate: ISong[] = [];
 
     if (traversalMode.value === "season") {

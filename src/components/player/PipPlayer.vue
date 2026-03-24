@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useDraggable } from '@vueuse/core';
-import { Play, Pause, SkipForward, Volume2, Maximize2, Orbit, CalendarDays } from 'lucide-vue-next';
+import { Play, Pause, SkipForward, Volume2, Maximize2, Orbit, CalendarDays, Radio } from 'lucide-vue-next';
 import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useSongsStore } from '@/stores/songs';
@@ -113,6 +113,8 @@ const traversalLabel = computed(() =>
   playerStore.traversalMode === 'era' ? 'Era mode' : 'Season mode',
 );
 
+const isArtistRadio = computed(() => galaxyStore.focusedArtistId !== null);
+
 const expand = (): void => {
   if (song.value) {
     galaxyStore.flyToStar(song.value.id);
@@ -189,7 +191,13 @@ const handleProgressClick = (event: MouseEvent): void => {
             class="pip-info"
           >
             <p class="pip-info__title">{{ song.title }}</p>
-            <p class="pip-info__artist">{{ song.artist?.name ?? `Artist #${song.artist_id}` }}</p>
+            <p class="pip-info__artist">
+              {{ song.artist?.name ?? `Artist #${song.artist_id}` }}
+              <span v-if="isArtistRadio" class="pip-info__radio-badge">
+                <Radio :size="10" />
+                Artist Radio
+              </span>
+            </p>
           </div>
         </Transition>
 
@@ -464,6 +472,22 @@ const handleProgressClick = (event: MouseEvent): void => {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pip-info__radio-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.6rem;
+  color: #A78BFA;
+  background: rgba(167, 139, 250, 0.12);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Controls */
