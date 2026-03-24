@@ -87,6 +87,11 @@ const handleClick = () => {
   opacity: 0.6;
 }
 
+.vote-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 .vote-btn--loading {
   opacity: 0.7;
 }

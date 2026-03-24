@@ -25,7 +25,11 @@ const onGenreClick = (genre: TGenre) => {
         'genre-legend-item--dimmed': galaxyStore.highlightedGenre !== null && galaxyStore.highlightedGenre !== genre,
       }"
       :title="genre"
+      tabindex="0"
+      role="button"
       @click="onGenreClick(genre)"
+      @keydown.enter="onGenreClick(genre)"
+      @keydown.space.prevent="onGenreClick(genre)"
     >
       <span
         class="genre-legend-dot"
@@ -82,6 +86,11 @@ const onGenreClick = (genre: TGenre) => {
 
 .genre-legend-item--dimmed {
   opacity: 0.4;
+}
+
+.genre-legend-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .genre-legend-dot {

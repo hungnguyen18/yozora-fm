@@ -211,6 +211,11 @@ const onWarpClick = (): void => {
   transform: translateX(1px) scale(0.97);
 }
 
+.era-segment:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 /* Glowing LEFT edge — vertical orientation */
 .era-segment__glow {
   position: absolute;
@@ -351,6 +356,11 @@ const onWarpClick = (): void => {
 
 .warp-btn:active {
   transform: translateX(1px) scale(0.97);
+}
+
+.warp-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .warp-btn__label {

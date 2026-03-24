@@ -30,7 +30,7 @@ async function signInWithGithub() {
 <template>
   <div ref="dropdownRef" class="fixed top-4 right-4 z-20">
     <button
-      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 border"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80"
       :class="[
         isOpen
           ? 'bg-primary text-soft-white border-primary'
@@ -66,7 +66,7 @@ async function signInWithGithub() {
 
         <div class="py-1">
           <button
-            class="flex items-center gap-3 w-full px-4 py-3 text-sm text-soft-white transition-colors duration-150 hover:bg-white/5"
+            class="flex items-center gap-3 w-full px-4 py-3 text-sm text-soft-white transition-colors duration-150 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-inset"
             @click="signInWithGoogle"
           >
             <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -91,7 +91,7 @@ async function signInWithGithub() {
           </button>
 
           <button
-            class="flex items-center gap-3 w-full px-4 py-3 text-sm text-soft-white transition-colors duration-150 hover:bg-white/5"
+            class="flex items-center gap-3 w-full px-4 py-3 text-sm text-soft-white transition-colors duration-150 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-inset"
             @click="signInWithGithub"
           >
             <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">

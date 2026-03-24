@@ -193,6 +193,11 @@ onMounted(async () => {
   background: rgba(13, 14, 34, 0.85);
 }
 
+.ui-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 /* ── Onboarding tooltip ── */
 .onboarding-tooltip {
   position: fixed;

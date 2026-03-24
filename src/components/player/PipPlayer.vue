@@ -255,6 +255,12 @@ const handleProgressClick = (event: MouseEvent): void => {
       <!-- Progress bar -->
       <div
         class="pip-progress"
+        tabindex="0"
+        role="slider"
+        aria-label="Playback progress"
+        :aria-valuenow="Math.round(playerStore.progress * 100)"
+        aria-valuemin="0"
+        aria-valuemax="100"
         @click.stop="handleProgressClick"
       >
         <div
@@ -468,6 +474,11 @@ const handleProgressClick = (event: MouseEvent): void => {
   color: #E8E8F0;
 }
 
+.pip-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 /* Volume wrapper */
 .pip-volume-wrapper {
   position: relative;
@@ -544,6 +555,11 @@ const handleProgressClick = (event: MouseEvent): void => {
 
 .pip-progress:hover {
   height: 5px;
+}
+
+.pip-progress:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .pip-progress__fill {

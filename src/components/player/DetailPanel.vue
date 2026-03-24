@@ -459,6 +459,11 @@ const shareSong = async () => {
   border-color: rgba(155, 155, 180, 0.25);
 }
 
+.close-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 /* ═══════════════════════════════════════════════
    MEDIA SECTION — video OR hero (mutually exclusive)
    ═══════════════════════════════════════════════ */
@@ -613,6 +618,11 @@ const shareSong = async () => {
   opacity: 0.75;
 }
 
+.badge--genre:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 .badge--year {
   color: rgba(155, 155, 180, 0.6);
   border-color: rgba(155, 155, 180, 0.15);
@@ -710,6 +720,11 @@ const shareSong = async () => {
   background-color: #4F46E5;
 }
 
+.autoplay-switch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 .autoplay-switch__thumb {
   position: absolute;
   top: 2px;
@@ -749,6 +764,11 @@ const shareSong = async () => {
   color: #A5B4FC;
   border-color: rgba(129, 140, 248, 0.35);
   background-color: rgba(79, 70, 229, 0.1);
+}
+
+.constellation-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .constellation-btn__arrow {
@@ -820,6 +840,11 @@ const shareSong = async () => {
 .related-item:hover {
   background: rgba(155, 155, 180, 0.06);
   border-color: rgba(155, 155, 180, 0.1);
+}
+
+.related-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .related-item__dot {
@@ -909,6 +934,11 @@ const shareSong = async () => {
   color: #E8E8F0;
   border-color: rgba(155, 155, 180, 0.3);
   background: rgba(155, 155, 180, 0.06);
+}
+
+.action-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .action-btn--success {

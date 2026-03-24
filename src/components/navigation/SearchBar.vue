@@ -152,7 +152,11 @@ useEventListener(window, 'keydown', onKeyDown);
                 v-for="song in listResult.slice(0, 8)"
                 :key="song.id"
                 class="search-result-item"
+                tabindex="0"
+                role="button"
                 @click="onSelectSong(song)"
+                @keydown.enter="onSelectSong(song)"
+                @keydown.space.prevent="onSelectSong(song)"
               >
                 <p class="search-result-title">{{ song.title }}</p>
                 <p class="search-result-meta">
@@ -172,7 +176,11 @@ useEventListener(window, 'keydown', onKeyDown);
                 v-for="artistName in uniqueArtists().slice(0, 4)"
                 :key="artistName"
                 class="search-result-item"
+                tabindex="0"
+                role="button"
                 @click="onSelectSong(listResult.find((s) => s.artist?.name === artistName)!)"
+                @keydown.enter="onSelectSong(listResult.find((s) => s.artist?.name === artistName)!)"
+                @keydown.space.prevent="onSelectSong(listResult.find((s) => s.artist?.name === artistName)!)"
               >
                 <p class="search-result-title">{{ artistName }}</p>
               </div>
@@ -188,7 +196,11 @@ useEventListener(window, 'keydown', onKeyDown);
                 v-for="animeTitle in uniqueAnime().slice(0, 4)"
                 :key="animeTitle"
                 class="search-result-item"
+                tabindex="0"
+                role="button"
                 @click="onSelectSong(listResult.find((s) => s.anime?.title === animeTitle)!)"
+                @keydown.enter="onSelectSong(listResult.find((s) => s.anime?.title === animeTitle)!)"
+                @keydown.space.prevent="onSelectSong(listResult.find((s) => s.anime?.title === animeTitle)!)"
               >
                 <p class="search-result-title">{{ animeTitle }}</p>
               </div>
@@ -255,6 +267,11 @@ useEventListener(window, 'keydown', onKeyDown);
   border-color: rgba(79, 70, 229, 0.5);
   color: #e8e8f0;
   background: rgba(20, 21, 41, 0.9);
+}
+
+.search-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .search-trigger-label {
@@ -358,6 +375,11 @@ useEventListener(window, 'keydown', onKeyDown);
   background: rgba(255, 255, 255, 0.06);
 }
 
+.search-close-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 /* --- Results --- */
 .search-results {
   overflow-y: auto;
@@ -385,6 +407,12 @@ useEventListener(window, 'keydown', onKeyDown);
 }
 
 .search-result-item:hover {
+  background: rgba(79, 70, 229, 0.12);
+}
+
+.search-result-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.8);
   background: rgba(79, 70, 229, 0.12);
 }
 

@@ -75,3 +75,19 @@ samp {
   height: 100%;
   width: 100%;
 }
+
+/* ── Global keyboard focus indicator ── */
+:focus-visible {
+  outline: 2px solid rgba(79, 70, 229, 0.8);
+  outline-offset: 2px;
+}
+
+/* For rounded elements, use box-shadow instead of outline */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}

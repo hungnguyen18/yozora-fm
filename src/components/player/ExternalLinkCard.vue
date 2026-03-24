@@ -254,6 +254,11 @@ const hasAnyLink = computed(() => {
   transform: translateY(-1px);
 }
 
+.ext-card__pill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
 .ext-card__pill--spotify:hover {
   border-color: #1DB954;
   background: rgba(29, 185, 84, 0.15);
