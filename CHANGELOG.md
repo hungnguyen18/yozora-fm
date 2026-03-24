@@ -11,11 +11,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - **First Contact Discoveries** — Track played songs in localStorage, golden burst animation on first play, "X / 9,111 discovered" counter
 - **Related Stars** — Detail panel shows 5 related songs scored by artist, genre, year proximity
 - **Session Trail** — Glowing line connecting played stars with fade gradient
+- **Explorer Passport** — Fog-of-war heatmap on minimap, "X% explored" counter, persisted in localStorage
+- **Era Time Warp** — Click decade buttons to fly camera to that era's ring with auto-zoom
+- **Playback Pulse** — Active star breathes with genre-based BPM (rock 140, ballad 80, pop 120...)
+- **Season Traversal Mode** — next() by same anime season instead of decade, toggle in PipPlayer
+- **OP vs ED Star Shapes** — OPs render rounder/softer, EDs sharper/spikier via per-instance shader attribute
+- **Artist Radio** — Autoplay through focused artist's songs chronologically with "Artist Radio" badge
+- **Accessibility** — `:focus-visible` keyboard focus rings on all interactive elements across 11 components
 
 ### Changed
 
 - **Seed pipeline: insert → upsert** — Artists, animes, songs now use `upsert()` with conflict resolution. Re-runs update stale data instead of failing on duplicates
 - **AniList enrichment** — Now fetches `title.native` (JP titles) + 7-day cache TTL (was permanent)
+- **Spotify enrichment** — Removed 2000-song cap, added progress logging + periodic cache save
 
 ### Fixed
 
@@ -24,6 +32,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - **listRecentId reactivity** — Changed to `ref<number[]>` for proper Vue tracking
 - **Session trail rendering** — Bake alpha into RGB, O(1) position lookup
 - **Focus zoom clipping** — Subtract 520px panel width from viewport
+
+### Removed
+
+- **Daily Challenge Widget** — Removed for cleaner UI
 
 ## [0.1.0] - 2026-03-24
 

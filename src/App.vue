@@ -12,7 +12,6 @@ import AuthButton from '@/components/ui/AuthButton.vue';
 import UserMenu from '@/components/ui/UserMenu.vue';
 import LoadingScreen from '@/components/ui/LoadingScreen.vue';
 import DiscoveryCounter from '@/components/ui/DiscoveryCounter.vue';
-import DailyChallengeWidget from '@/components/ui/DailyChallengeWidget.vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useSongsStore } from '@/stores/songs';
@@ -22,8 +21,6 @@ import { useRouting } from '@/composables/useRouting';
 import { usePageTitle } from '@/composables/usePageTitle';
 import { useDiscovery } from '@/composables/useDiscovery';
 import { useExplorerPassport } from '@/composables/useExplorerPassport';
-import { useDailyChallenge } from '@/composables/useDailyChallenge';
-
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
 
@@ -33,7 +30,6 @@ useRouting();
 usePageTitle();
 useDiscovery();
 useExplorerPassport();
-useDailyChallenge();
 
 const isLoading = computed(() => songsStore.isLoading);
 
@@ -131,7 +127,6 @@ onMounted(async () => {
       <GenreLegend />
       <RandomPlayButton />
       <DiscoveryCounter />
-      <DailyChallengeWidget />
       <AuthButton v-if="!authStore.isAuthenticated" />
       <UserMenu v-else />
     </div>
