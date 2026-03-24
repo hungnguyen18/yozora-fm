@@ -1,15 +1,24 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  statSync,
+  unlinkSync,
+} from "node:fs";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const ANILIST_ENDPOINT = 'https://graphql.anilist.co';
+const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 const BATCH_SIZE = 50;
 // ~700 ms between requests to stay under the 90 req/min rate limit
 const REQUEST_DELAY_MS = 700;
+// Cache TTL — 7 days in milliseconds
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,10 +28,11 @@ const CACHE_PATH = `${__dirname}/.cache/anilist.json`;
 // Types
 // ---------------------------------------------------------------------------
 
-type TAnilistSeason = 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL';
+type TAnilistSeason = "WINTER" | "SPRING" | "SUMMER" | "FALL";
 
 interface TAnilistMedia {
   id: number;
+  title: { native: string | null; romaji: string | null } | null;
   coverImage: { large: string } | null;
   seasonYear: number | null;
   season: TAnilistSeason | null;
@@ -40,6 +50,7 @@ type TAnilistEnrichment = {
   coverUrl: string;
   year?: number;
   season?: string;
+  titleJp?: string;
 };
 
 // Serializable cache format (Map cannot be JSON-serialised directly)
@@ -58,10 +69,10 @@ const mapSeason = (season: TAnilistSeason | null): string | undefined => {
   }
 
   const seasonMap: Record<TAnilistSeason, string> = {
-    WINTER: 'winter',
-    SPRING: 'spring',
-    SUMMER: 'summer',
-    FALL: 'fall',
+    WINTER: "winter",
+    SPRING: "spring",
+    SUMMER: "summer",
+    FALL: "fall",
   };
 
   return seasonMap[season];
@@ -84,6 +95,7 @@ const MEDIA_QUERY = `
     Page(perPage: 50) {
       media(id_in: $ids, type: ANIME) {
         id
+        title { native romaji }
         coverImage { large }
         seasonYear
         season
@@ -92,14 +104,12 @@ const MEDIA_QUERY = `
   }
 `;
 
-const fetchBatch = async (
-  ids: number[],
-): Promise<TAnilistMedia[]> => {
+const fetchBatch = async (ids: number[]): Promise<TAnilistMedia[]> => {
   const response = await fetch(ANILIST_ENDPOINT, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      "Content-Type": "application/json",
+      Accept: "application/json",
     },
     body: JSON.stringify({ query: MEDIA_QUERY, variables: { ids } }),
   });
@@ -121,7 +131,15 @@ const loadCache = (): Map<number, TAnilistEnrichment> | null => {
     return null;
   }
 
-  const raw = readFileSync(CACHE_PATH, 'utf-8');
+  // Check cache TTL — delete and re-fetch if older than 7 days
+  const mtime = statSync(CACHE_PATH).mtimeMs;
+  if (Date.now() - mtime > CACHE_TTL_MS) {
+    console.log("AniList cache expired, re-fetching...");
+    unlinkSync(CACHE_PATH);
+    return null;
+  }
+
+  const raw = readFileSync(CACHE_PATH, "utf-8");
   const entries = JSON.parse(raw) as TCacheEntry[];
   return new Map(entries);
 };
@@ -129,7 +147,7 @@ const loadCache = (): Map<number, TAnilistEnrichment> | null => {
 const saveCache = (data: Map<number, TAnilistEnrichment>): void => {
   mkdirSync(dirname(CACHE_PATH), { recursive: true });
   const entries: TCacheEntry[] = Array.from(data.entries());
-  writeFileSync(CACHE_PATH, JSON.stringify(entries, null, 2), 'utf-8');
+  writeFileSync(CACHE_PATH, JSON.stringify(entries, null, 2), "utf-8");
 };
 
 // ---------------------------------------------------------------------------
@@ -157,7 +175,7 @@ export const enrichWithAnilist = async (
 
       for (let j = 0; j < mediaList.length; j += 1) {
         const media = mediaList[j];
-        const coverUrl = media.coverImage?.large ?? '';
+        const coverUrl = media.coverImage?.large ?? "";
 
         // Skip entries with no cover image — they are not useful for the seed
         if (!coverUrl) {
@@ -168,6 +186,7 @@ export const enrichWithAnilist = async (
           coverUrl,
           year: media.seasonYear ?? undefined,
           season: mapSeason(media.season),
+          titleJp: media.title?.native ?? undefined,
         };
 
         result.set(media.id, enrichment);
@@ -185,7 +204,9 @@ export const enrichWithAnilist = async (
   }
 
   saveCache(result);
-  console.log(`AniList: fetched ${result.size} entries, cache saved to ${CACHE_PATH}`);
+  console.log(
+    `AniList: fetched ${result.size} entries, cache saved to ${CACHE_PATH}`,
+  );
 
   return result;
 };

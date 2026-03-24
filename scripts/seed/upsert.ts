@@ -39,38 +39,8 @@ export const upsertArtists = async (
 
   const artistIdMap = new Map<string, number>();
 
-  // Fetch all existing artists in batches (Supabase has URL length limits for .in())
-  const listName = artists.map((a) => a.name);
-  const nameBatches = chunkArray(listName, 200);
-  for (let b = 0; b < nameBatches.length; b += 1) {
-    const { data: existing, error: fetchError } = await supabase
-      .from("artists")
-      .select("id, name")
-      .in("name", nameBatches[b]);
-
-    if (fetchError) {
-      console.warn(
-        `Artists fetch batch ${b + 1} failed: ${fetchError.message} — skipping`,
-      );
-      continue;
-    }
-
-    for (let i = 0; i < (existing ?? []).length; i += 1) {
-      const row = existing![i];
-      artistIdMap.set(row.name, row.id);
-    }
-  }
-
-  // Determine which artists are truly new
-  const listNew = artists.filter((a) => !artistIdMap.has(a.name));
-
-  if (listNew.length === 0) {
-    console.log(`Artists: all ${artists.length} already exist.`);
-    return artistIdMap;
-  }
-
-  // Insert new artists in batches
-  const batches = chunkArray(listNew, BATCH_SIZE);
+  // Upsert all artists in batches — updates existing rows on name conflict
+  const batches = chunkArray(artists, BATCH_SIZE);
   for (let i = 0; i < batches.length; i += 1) {
     const batch = batches[i];
     const rows = batch.map((a) => ({
@@ -78,26 +48,24 @@ export const upsertArtists = async (
       ...(a.nameJp !== undefined ? { name_jp: a.nameJp } : {}),
     }));
 
-    const { data: inserted, error } = await supabase
+    const { data: upserted, error } = await supabase
       .from("artists")
-      .insert(rows)
+      .upsert(rows, { onConflict: "name" })
       .select("id, name");
 
     if (error) {
       throw new Error(
-        `Failed to insert artists batch ${i + 1}: ${error.message}`,
+        `Failed to upsert artists batch ${i + 1}: ${error.message}`,
       );
     }
 
-    for (let j = 0; j < (inserted ?? []).length; j += 1) {
-      const row = inserted![j];
+    for (let j = 0; j < (upserted ?? []).length; j += 1) {
+      const row = upserted![j];
       artistIdMap.set(row.name, row.id);
     }
   }
 
-  console.log(
-    `Artists: inserted ${listNew.length} new, ${artistIdMap.size - listNew.length} already existed.`,
-  );
+  console.log(`Artists: upserted ${artistIdMap.size} artists.`);
   return artistIdMap;
 };
 
@@ -109,42 +77,15 @@ export const upsertAnimes = async (
   animes: ISeedAnime[],
   anilistEnrichment: Map<
     number,
-    { coverUrl: string; year?: number; season?: string }
+    { coverUrl: string; year?: number; season?: string; titleJp?: string }
   >,
 ): Promise<Map<string, number>> => {
   console.log(`Upserting ${animes.length} animes...`);
 
   const animeIdMap = new Map<string, number>();
 
-  const listTitle = animes.map((a) => a.title);
-  const titleBatches = chunkArray(listTitle, 200);
-  for (let b = 0; b < titleBatches.length; b += 1) {
-    const { data: existing, error: fetchError } = await supabase
-      .from("animes")
-      .select("id, title")
-      .in("title", titleBatches[b]);
-
-    if (fetchError) {
-      console.warn(
-        `Animes fetch batch ${b + 1} failed: ${fetchError.message} — skipping`,
-      );
-      continue;
-    }
-
-    for (let i = 0; i < (existing ?? []).length; i += 1) {
-      const row = existing![i];
-      animeIdMap.set(row.title, row.id);
-    }
-  }
-
-  const listNew = animes.filter((a) => !animeIdMap.has(a.title));
-
-  if (listNew.length === 0) {
-    console.log(`Animes: all ${animes.length} already exist.`);
-    return animeIdMap;
-  }
-
-  const batches = chunkArray(listNew, BATCH_SIZE);
+  // Upsert all animes in batches — updates existing rows on title conflict
+  const batches = chunkArray(animes, BATCH_SIZE);
   for (let i = 0; i < batches.length; i += 1) {
     const batch = batches[i];
     const rows = batch.map((anime) => {
@@ -158,10 +99,11 @@ export const upsertAnimes = async (
       const rawSeason = enriched?.season ?? anime.season;
       const season = rawSeason?.toLowerCase();
       const coverUrl = enriched?.coverUrl ?? anime.coverUrl;
+      const titleJp = enriched?.titleJp ?? anime.titleJp;
 
       return {
         title: anime.title,
-        ...(anime.titleJp !== undefined ? { title_jp: anime.titleJp } : {}),
+        ...(titleJp !== undefined ? { title_jp: titleJp } : {}),
         ...(year !== undefined ? { year } : {}),
         ...(season !== undefined ? { season } : {}),
         ...(anime.anilistId !== undefined
@@ -171,26 +113,24 @@ export const upsertAnimes = async (
       };
     });
 
-    const { data: inserted, error } = await supabase
+    const { data: upserted, error } = await supabase
       .from("animes")
-      .insert(rows)
+      .upsert(rows, { onConflict: "title" })
       .select("id, title");
 
     if (error) {
       throw new Error(
-        `Failed to insert animes batch ${i + 1}: ${error.message}`,
+        `Failed to upsert animes batch ${i + 1}: ${error.message}`,
       );
     }
 
-    for (let j = 0; j < (inserted ?? []).length; j += 1) {
-      const row = inserted![j];
+    for (let j = 0; j < (upserted ?? []).length; j += 1) {
+      const row = upserted![j];
       animeIdMap.set(row.title, row.id);
     }
   }
 
-  console.log(
-    `Animes: inserted ${listNew.length} new, ${animeIdMap.size - listNew.length} already existed.`,
-  );
+  console.log(`Animes: upserted ${animeIdMap.size} animes.`);
   return animeIdMap;
 };
 
@@ -252,20 +192,22 @@ export const upsertSongs = async (
   }
 
   if (listResolved.length === 0) {
-    console.log("Songs: nothing to insert.");
+    console.log("Songs: nothing to upsert.");
     return;
   }
 
   const batches = chunkArray(listResolved, BATCH_SIZE);
   for (let i = 0; i < batches.length; i += 1) {
-    const { error } = await supabase.from("songs").insert(batches[i]);
+    const { error } = await supabase
+      .from("songs")
+      .upsert(batches[i], { onConflict: "title,artist_id,anime_id" });
 
     if (error) {
       throw new Error(
-        `Failed to insert songs batch ${i + 1}: ${error.message}`,
+        `Failed to upsert songs batch ${i + 1}: ${error.message}`,
       );
     }
   }
 
-  console.log(`Songs: inserted ${listResolved.length} songs.`);
+  console.log(`Songs: upserted ${listResolved.length} songs.`);
 };
