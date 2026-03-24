@@ -1,0 +1,113 @@
+name: Version Bump & Changelog
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check skip condition
+        id: check
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if echo "$COMMIT_MSG" | grep -q '\[skip ci\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump patch version
+        if: steps.check.outputs.skip == 'false'
+        id: bump
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Bumped $CURRENT -> $NEW_VERSION"
+
+      - name: Update CHANGELOG.md
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+
+          # Collect commit messages since last tag (or last 20 if no tags)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            COMMITS=$(git log "$LAST_TAG"..HEAD~1 --pretty=format:"- %s" --no-merges)
+          else
+            COMMITS=$(git log HEAD~1 --pretty=format:"- %s" --no-merges -20)
+          fi
+
+          # Categorize commits by prefix
+          ADDED=$(echo "$COMMITS" | grep -iE "^- Add " || true)
+          CHANGED=$(echo "$COMMITS" | grep -iE "^- (Update|Improve|Refactor) " || true)
+          FIXED=$(echo "$COMMITS" | grep -iE "^- Fix " || true)
+          REMOVED=$(echo "$COMMITS" | grep -iE "^- Remove " || true)
+          OTHER=$(echo "$COMMITS" | grep -viE "^- (Add|Update|Improve|Refactor|Fix|Remove) " || true)
+
+          # Build new version entry
+          ENTRY="## [$VERSION] - $DATE\n"
+          [ -n "$ADDED" ] && ENTRY="$ENTRY\n### Added\n\n$ADDED\n"
+          [ -n "$CHANGED" ] && ENTRY="$ENTRY\n### Changed\n\n$CHANGED\n"
+          [ -n "$FIXED" ] && ENTRY="$ENTRY\n### Fixed\n\n$FIXED\n"
+          [ -n "$REMOVED" ] && ENTRY="$ENTRY\n### Removed\n\n$REMOVED\n"
+          [ -n "$OTHER" ] && ENTRY="$ENTRY\n### Other\n\n$OTHER\n"
+
+          # Insert before the first existing version heading
+          python3 -c "
+          import re
+
+          with open('CHANGELOG.md', 'r') as f:
+              content = f.read()
+
+          new_entry = '''$(echo -e "$ENTRY")'''
+
+          pattern = r'(## \[Unreleased\].*?\n(?:.*?\n)*?)(## \[)'
+          match = re.search(pattern, content)
+          if match:
+              pos = match.start(2)
+              content = content[:pos] + new_entry.strip() + '\n\n' + content[pos:]
+          else:
+              content = content.rstrip() + '\n\n' + new_entry.strip() + '\n'
+
+          with open('CHANGELOG.md', 'w') as f:
+              f.write(content)
+          "
+
+      - name: Commit and push
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+          git add package.json CHANGELOG.md
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Update v$VERSION — changelog & version bump [skip ci]"
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push origin main --follow-tags
