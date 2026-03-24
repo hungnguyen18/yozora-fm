@@ -37,6 +37,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 - **Daily Challenge Widget** — Removed for cleaner UI
 
+## [0.1.1] - 2026-03-24
+
+### Added
+
+- Add daily challenge: gamified music discovery with rotating tasks
+- Add artist radio: autoplay through focused artist's songs
+- Add OP vs ED star shape differentiation in shader
+- Add season traversal mode: next() by anime season instead of decade
+- Add playback pulse: active star breathes with genre-based BPM
+- Add :focus-visible keyboard accessibility across all interactive elements
+- Add explorer passport: fog-of-war heatmap on minimap
+- Add era time warp: click decade button to fly camera to that era ring
+- Add --force flag to genre classifier + classify all 9111 songs
+- Add genre classification script for 9111 songs
+
+### Changed
+
+- Update CHANGELOG with unreleased changes
+
+### Fixed
+
+- Fix trail Set mutation + skip applyScaleCap during flyToStar
+- Fix build: remove unused variables that cause vue-tsc errors
+
+### Removed
+
+- Remove DailyChallengeWidget, update CHANGELOG
+- Remove Spotify 2000-song cap, add progress logging + periodic cache save
+
+### Other
+
+- Upgrade seed pipeline: upsert + JP titles + cache TTL
+
 ## [0.1.0] - 2026-03-24
 
 ### Added
