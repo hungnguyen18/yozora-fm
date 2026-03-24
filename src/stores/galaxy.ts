@@ -231,6 +231,28 @@ export const useGalaxyStore = defineStore("galaxy", {
       this.setZoomLevel(clampedZoom);
     },
 
+    flyToEra(decade: number) {
+      // Calculate ring radius for this decade
+      const R_MAX = 500;
+      const TOTAL_SPAN_YEARS = 46;
+      const radius = R_MAX * (1 - (decade - 1980) / TOTAL_SPAN_YEARS);
+
+      // Pan to galaxy center and zoom to frame the ring
+      // Ring should fill ~60% of the smaller viewport dimension
+      const PANEL_WIDTH = 520;
+      const viewportSize = Math.min(
+        window.innerWidth - PANEL_WIDTH,
+        window.innerHeight,
+      );
+      const targetZoom = (viewportSize * 0.3) / radius;
+      const clampedZoom = Math.max(1, Math.min(targetZoom, 8));
+
+      this.setPan(0, 0);
+      this.setZoomLevel(clampedZoom);
+      // Set focusedEra AFTER setZoomLevel, since setZoomLevel clears it at low zoom
+      this.setFocusedEra(decade);
+    },
+
     setFocusedEra(decade: number | null) {
       if (decade === null) {
         this.focusedEra = null;
