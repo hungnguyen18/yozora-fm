@@ -1,18 +1,20 @@
 import { watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useGalaxyStore } from "@/stores/galaxy";
 import { usePlayerStore } from "@/stores/player";
 import { useSongsStore } from "@/stores/songs";
 
 /**
- * Lightweight URL routing via History API.
- * Syncs galaxy.selectedSongId ↔ browser URL path.
+ * Syncs galaxy.selectedSongId ↔ vue-router URL.
  *
  *   /             → galaxy view (no song selected)
  *   /song/:id     → detail panel open for that song
  *
- * Call once from App.vue.
+ * Call once from GalaxyView.vue.
  */
 export const useRouting = () => {
+  const route = useRoute();
+  const router = useRouter();
   const galaxyStore = useGalaxyStore();
   const playerStore = usePlayerStore();
   const songsStore = useSongsStore();
@@ -21,56 +23,52 @@ export const useRouting = () => {
   watch(
     () => galaxyStore.selectedSongId,
     (songId) => {
-      const currentPath = window.location.pathname;
       if (songId !== null) {
-        // Close PiP when detail panel opens
         playerStore.isPip = false;
         const target = `/song/${songId}`;
-        if (currentPath !== target) {
-          window.history.pushState({ songId }, "", target);
+        if (route.path !== target) {
+          router.push(target);
         }
       } else {
-        if (currentPath !== "/") {
-          window.history.pushState({}, "", "/");
+        if (route.path !== "/") {
+          router.push("/");
         }
       }
     },
   );
 
-  // Handle browser back/forward
-  window.addEventListener("popstate", () => {
-    const path = window.location.pathname;
-    const match = path.match(/^\/song\/(\d+)$/);
-    if (match) {
-      const songId = parseInt(match[1], 10);
-      const song = songsStore.listSong.find((s) => s.id === songId);
-      if (song) {
-        galaxyStore.selectedSongId = songId;
-        playerStore.play(song);
-        galaxyStore.flyToStar(songId);
-      }
-    } else {
-      // Navigated back to root — close panel
-      if (galaxyStore.selectedSongId !== null) {
-        if (playerStore.isPlaying) {
-          playerStore.isPip = true;
+  // Handle route changes (browser back/forward)
+  watch(
+    () => route.params.id,
+    (id) => {
+      if (id) {
+        const songId = parseInt(id as string, 10);
+        const song = songsStore.listSong.find((s) => s.id === songId);
+        if (song) {
+          galaxyStore.selectedSongId = songId;
+          playerStore.play(song);
+          galaxyStore.flyToStar(songId);
         }
-        galaxyStore.selectedSongId = null;
+      } else if (route.name === "galaxy") {
+        if (galaxyStore.selectedSongId !== null) {
+          if (playerStore.isPlaying) {
+            playerStore.isPip = true;
+          }
+          galaxyStore.selectedSongId = null;
+        }
       }
-    }
-  });
+    },
+  );
 
   // On initial load: if URL has /song/:id, open that song once data is ready
   const restoreFromUrl = (): void => {
-    const path = window.location.pathname;
-    const match = path.match(/^\/song\/(\d+)$/);
-    if (!match) {
+    const id = route.params.id as string | undefined;
+    if (!id) {
       return;
     }
 
-    const songId = parseInt(match[1], 10);
+    const songId = parseInt(id, 10);
 
-    // Songs might not be loaded yet — watch for them
     const tryRestore = (): boolean => {
       if (songsStore.listSong.length === 0) {
         return false;
@@ -85,7 +83,6 @@ export const useRouting = () => {
     };
 
     if (!tryRestore()) {
-      // Wait until songs are loaded
       const unwatch = watch(
         () => songsStore.listSong.length,
         (length) => {
