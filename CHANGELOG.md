@@ -37,6 +37,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 - **Daily Challenge Widget** — Removed for cleaner UI
 
+## [0.1.5] - 2026-03-24
+
 ## [0.1.4] - 2026-03-24
 
 ## [0.1.3] - 2026-03-24
