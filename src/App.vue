@@ -20,6 +20,7 @@ import { usePlayer } from '@/composables/usePlayer';
 import { useRouting } from '@/composables/useRouting';
 import { usePageTitle } from '@/composables/usePageTitle';
 import { useDiscovery } from '@/composables/useDiscovery';
+import { useExplorerPassport } from '@/composables/useExplorerPassport';
 
 const authStore = useAuthStore();
 const songsStore = useSongsStore();
@@ -29,6 +30,7 @@ usePlayer();
 useRouting();
 usePageTitle();
 useDiscovery();
+useExplorerPassport();
 
 const isLoading = computed(() => songsStore.isLoading);
 

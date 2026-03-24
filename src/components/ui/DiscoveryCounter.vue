@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useDiscovery } from '@/composables/useDiscovery';
+import { useExplorerPassport } from '@/composables/useExplorerPassport';
 
 const { discoveredCount, totalCount } = useDiscovery();
+const { completionPercent } = useExplorerPassport();
 </script>
 
 <template>
@@ -10,6 +12,7 @@ const { discoveredCount, totalCount } = useDiscovery();
     <span class="discovery-separator"> / </span>
     <span class="discovery-total">{{ totalCount.toLocaleString() }}</span>
     <span class="discovery-label"> discovered</span>
+    <span class="discovery-explored"> · {{ completionPercent }}% explored</span>
   </div>
 </template>
 
@@ -49,5 +52,10 @@ const { discoveredCount, totalCount } = useDiscovery();
 
 .discovery-label {
   color: rgba(155, 155, 180, 0.5);
+}
+
+.discovery-explored {
+  color: rgba(79, 70, 229, 0.7);
+  font-weight: 500;
 }
 </style>

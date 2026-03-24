@@ -2,11 +2,13 @@
 import { ref, onMounted, watch } from 'vue';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useSongsStore } from '@/stores/songs';
+import { useExplorerPassport } from '@/composables/useExplorerPassport';
 import { GENRE_COLOR_MAP } from '@/types';
 import type { TGenre } from '@/types';
 
 const galaxyStore = useGalaxyStore();
 const songsStore = useSongsStore();
+const { grid, GRID_SIZE: PASSPORT_GRID_SIZE } = useExplorerPassport();
 
 const CANVAS_SIZE = 100;
 const R_MAX = 500;
@@ -139,6 +141,17 @@ const draw = () => {
     }
   }
 
+  // Draw fog of war overlay
+  const cellPx = CANVAS_SIZE / PASSPORT_GRID_SIZE;
+  for (let cy = 0; cy < PASSPORT_GRID_SIZE; cy += 1) {
+    for (let cx = 0; cx < PASSPORT_GRID_SIZE; cx += 1) {
+      if (grid.value[cy * PASSPORT_GRID_SIZE + cx] === 0) {
+        ctx.fillStyle = 'rgba(10, 11, 26, 0.6)';
+        ctx.fillRect(cx * cellPx, cy * cellPx, cellPx, cellPx);
+      }
+    }
+  }
+
   // Draw viewport rectangle
   const zoom = galaxyStore.zoomLevel;
   const screenW = window.innerWidth;
@@ -174,6 +187,7 @@ watch(
     galaxyStore.panX,
     galaxyStore.panY,
     galaxyStore.zoomLevel,
+    grid.value,
   ],
   () => { draw(); },
 );
@@ -201,7 +215,12 @@ const onMinimapClick = (e: MouseEvent) => {
       :height="CANVAS_SIZE"
       class="minimap-canvas"
       title="Click to jump camera"
+      tabindex="0"
+      role="button"
+      aria-label="Galaxy minimap — click to jump camera"
       @click="onMinimapClick"
+      @keydown.enter="onMinimapClick($event as any)"
+      @keydown.space.prevent="onMinimapClick($event as any)"
     />
     <span class="minimap-label">Galaxy Map</span>
   </div>
@@ -233,6 +252,11 @@ const onMinimapClick = (e: MouseEvent) => {
   width: 100px;
   height: 100px;
   cursor: crosshair;
+}
+
+.minimap-canvas:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
 .minimap-label {
