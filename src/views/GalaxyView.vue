@@ -1,3 +1,7 @@
+<script lang="ts">
+export default { name: 'GalaxyView' };
+</script>
+
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import GalaxyScene from '@/components/galaxy/GalaxyScene.vue';
@@ -15,9 +19,7 @@ import { Eye, EyeOff } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useSongsStore } from '@/stores/songs';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
-import { usePlayer } from '@/composables/usePlayer';
 import { useRouting } from '@/composables/useRouting';
-import { usePageTitle } from '@/composables/usePageTitle';
 import { useDiscovery } from '@/composables/useDiscovery';
 import { useExplorerPassport } from '@/composables/useExplorerPassport';
 
@@ -25,9 +27,7 @@ const authStore = useAuthStore();
 const songsStore = useSongsStore();
 
 useKeyboardNav();
-usePlayer();
 useRouting();
-usePageTitle();
 useDiscovery();
 useExplorerPassport();
 
@@ -96,12 +96,7 @@ const dismissOnboarding = () => {
   }
 };
 
-onMounted(async () => {
-  await Promise.all([
-    songsStore.fetchSongs(),
-    authStore.initAuth(),
-  ]);
-
+onMounted(() => {
   if (isOnboardingVisible.value) {
     onboardingTimer = setTimeout(dismissOnboarding, 5000);
   }

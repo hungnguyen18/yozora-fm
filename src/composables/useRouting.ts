@@ -19,6 +19,11 @@ export const useRouting = () => {
   const playerStore = usePlayerStore();
   const songsStore = useSongsStore();
 
+  // Guard: prevent feedback loop between the two watchers.
+  // When we programmatically push a route, the route.params watcher
+  // should NOT re-trigger play/flyToStar.
+  let isProgrammaticNav = false;
+
   // Push URL when selectedSongId changes + close PiP when panel opens
   watch(
     () => galaxyStore.selectedSongId,
@@ -27,20 +32,30 @@ export const useRouting = () => {
         playerStore.isPip = false;
         const target = `/song/${songId}`;
         if (route.path !== target) {
-          router.push(target);
+          isProgrammaticNav = true;
+          router.push(target).finally(() => {
+            isProgrammaticNav = false;
+          });
         }
       } else {
         if (route.path !== "/") {
-          router.push("/");
+          isProgrammaticNav = true;
+          router.push("/").finally(() => {
+            isProgrammaticNav = false;
+          });
         }
       }
     },
   );
 
-  // Handle route changes (browser back/forward)
+  // Handle route changes (browser back/forward only)
   watch(
     () => route.params.id,
     (id) => {
+      if (isProgrammaticNav) {
+        return;
+      }
+
       if (id) {
         const songId = parseInt(id as string, 10);
         const song = songsStore.listSong.find((s) => s.id === songId);

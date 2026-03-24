@@ -10,6 +10,10 @@ export const useSongsStore = defineStore("songs", {
   }),
   actions: {
     async fetchSongs() {
+      // Skip if already loaded
+      if (this.listSong.length > 0) {
+        return;
+      }
       this.isLoading = true;
       this.error = null;
 
