@@ -46,12 +46,15 @@ const listStarWorldPosition = shallowRef<THREE.Vector3[]>([]);
 // ═══════════════════════════════════════════════════════════════════
 
 const STAR_VERTEX = /* glsl */ `
+  attribute float aType;
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vSeed;
+  varying float vType;
 
   void main() {
     vUv = uv;
+    vType = aType;
     #ifdef USE_INSTANCING_COLOR
       vColor = instanceColor;
     #else
@@ -72,6 +75,7 @@ const STAR_FRAGMENT = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vSeed;
+  varying float vType;
 
   // Hash function for deterministic randomness from seed
   float hash(float n) {
@@ -94,6 +98,14 @@ const STAR_FRAGMENT = /* glsl */ `
     float coreSize = 0.08 + hash(s * 71.9) * 0.07;            // 0.08–0.15
     float rotation = hash(s * 97.3) * 6.2831853;              // 0–2π
     float haloStrength = 0.15 + hash(s * 113.7) * 0.2;        // 0.15–0.35
+
+    // ── OP/ED shape differentiation ──
+    // OP (vType=0): rounder, softer — larger core, shorter spikes
+    // ED (vType=1): sharper, more defined — smaller core, longer spikes
+    float typeMix = vType;
+    coreSize = mix(coreSize * 1.3, coreSize * 0.8, typeMix);
+    spikeLength = mix(spikeLength * 0.7, spikeLength * 1.2, typeMix);
+    spikeSharpness = mix(spikeSharpness * 0.8, spikeSharpness * 1.3, typeMix);
 
     // ── Rotated polar coordinates ──
     float angle = atan(uv.y, uv.x) + rotation;
@@ -180,6 +192,14 @@ const buildMesh = () => {
     matrix.decompose(posVec, quatVec, scaleVec);
     worldPositions.push(posVec.clone());
   }
+
+  // Per-instance song type: 0.0 = OP, 1.0 = ED
+  const typeData = new Float32Array(count);
+  for (let i = 0; i < count; i += 1) {
+    typeData[i] = listSong[i].type === 'ED' ? 1.0 : 0.0;
+  }
+  const typeAttr = new THREE.InstancedBufferAttribute(typeData, 1);
+  mesh.geometry.setAttribute('aType', typeAttr);
 
   mesh.instanceMatrix.needsUpdate = true;
   mesh.instanceColor.needsUpdate = true;
