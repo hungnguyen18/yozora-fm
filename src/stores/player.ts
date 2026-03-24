@@ -14,6 +14,10 @@ export const usePlayerStore = defineStore("player", () => {
   // Persisted preferences via useLocalStorage
   const volume = useLocalStorage("yozora_player_volume", 0.8);
   const autoPlay = useLocalStorage("yozora_player_autoPlay", true);
+  const traversalMode = useLocalStorage<"era" | "season">(
+    "yozora_traversal_mode",
+    "era",
+  );
 
   // Recently played song IDs — prevents next() from ping-ponging
   const MAX_RECENT = 20;
@@ -69,21 +73,49 @@ export const usePlayerStore = defineStore("player", () => {
     const currentDecade = Math.floor(currentYear / 10) * 10;
     const currentId = currentSong.value.id;
 
-    // Collect candidates: same decade, has video, not recently played
+    // Collect candidates: has video, not recently played, matching mode
     const recentSet = new Set(listRecentId.value);
-    const listSameEra: ISong[] = [];
-    for (let i = 0; i < songsStore.listSong.length; i += 1) {
-      const s = songsStore.listSong[i];
-      if (!s.animethemes_slug || recentSet.has(s.id)) {
-        continue;
+    const listCandidate: ISong[] = [];
+
+    if (traversalMode.value === "season") {
+      // Season mode: match same year AND same season
+      const currentSeason = currentSong.value.anime?.season;
+      for (let i = 0; i < songsStore.listSong.length; i += 1) {
+        const s = songsStore.listSong[i];
+        if (!s.animethemes_slug || recentSet.has(s.id)) {
+          continue;
+        }
+        if (s.year === currentYear && s.anime?.season === currentSeason) {
+          listCandidate.push(s);
+        }
       }
-      const decade = Math.floor((s.year ?? 1980) / 10) * 10;
-      if (decade === currentDecade) {
-        listSameEra.push(s);
+      // Fallback: if too few in exact season, expand to same year any season
+      if (listCandidate.length < 3) {
+        for (let i = 0; i < songsStore.listSong.length; i += 1) {
+          const s = songsStore.listSong[i];
+          if (!s.animethemes_slug || recentSet.has(s.id)) {
+            continue;
+          }
+          if (s.year === currentYear && !listCandidate.includes(s)) {
+            listCandidate.push(s);
+          }
+        }
+      }
+    } else {
+      // Era mode (default): match same decade
+      for (let i = 0; i < songsStore.listSong.length; i += 1) {
+        const s = songsStore.listSong[i];
+        if (!s.animethemes_slug || recentSet.has(s.id)) {
+          continue;
+        }
+        const decade = Math.floor((s.year ?? 1980) / 10) * 10;
+        if (decade === currentDecade) {
+          listCandidate.push(s);
+        }
       }
     }
 
-    if (listSameEra.length === 0) {
+    if (listCandidate.length === 0) {
       isPlaying.value = false;
       progress.value = 0;
       return;
@@ -101,9 +133,9 @@ export const usePlayerStore = defineStore("player", () => {
 
     if (currentPos) {
       let minDist = Infinity;
-      let nearest = listSameEra[0];
-      for (let i = 0; i < listSameEra.length; i += 1) {
-        const candidate = listSameEra[i];
+      let nearest = listCandidate[0];
+      for (let i = 0; i < listCandidate.length; i += 1) {
+        const candidate = listCandidate[i];
         const pos = posMap.get(candidate.id);
         if (!pos) {
           continue;
@@ -118,7 +150,8 @@ export const usePlayerStore = defineStore("player", () => {
       }
       nextSong = nearest;
     } else {
-      nextSong = listSameEra[Math.floor(Math.random() * listSameEra.length)];
+      nextSong =
+        listCandidate[Math.floor(Math.random() * listCandidate.length)];
     }
 
     play(nextSong);
@@ -177,6 +210,10 @@ export const usePlayerStore = defineStore("player", () => {
     autoPlay.value = value;
   }
 
+  function toggleTraversalMode() {
+    traversalMode.value = traversalMode.value === "era" ? "season" : "era";
+  }
+
   return {
     currentSong,
     isPlaying,
@@ -184,6 +221,7 @@ export const usePlayerStore = defineStore("player", () => {
     progress,
     volume,
     autoPlay,
+    traversalMode,
     listRecentId,
     play,
     pause,
@@ -195,5 +233,6 @@ export const usePlayerStore = defineStore("player", () => {
     togglePip,
     setProgress,
     setAutoPlay,
+    toggleTraversalMode,
   };
 });

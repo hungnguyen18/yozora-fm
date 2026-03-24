@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useDraggable } from '@vueuse/core';
-import { Play, Pause, SkipForward, Volume2, Maximize2 } from 'lucide-vue-next';
+import { Play, Pause, SkipForward, Volume2, Maximize2, Orbit, CalendarDays } from 'lucide-vue-next';
 import { usePlayerStore } from '@/stores/player';
 import { useGalaxyStore } from '@/stores/galaxy';
 import { useSongsStore } from '@/stores/songs';
@@ -105,6 +105,14 @@ const skipNext = (): void => {
   playerStore.next(true);
 };
 
+const toggleTraversal = (): void => {
+  playerStore.toggleTraversalMode();
+};
+
+const traversalLabel = computed(() =>
+  playerStore.traversalMode === 'era' ? 'Era mode' : 'Season mode',
+);
+
 const expand = (): void => {
   if (song.value) {
     galaxyStore.flyToStar(song.value.id);
@@ -204,6 +212,18 @@ const handleProgressClick = (event: MouseEvent): void => {
             @click.stop="skipNext"
           >
             <SkipForward :size="14" />
+          </button>
+
+          <!-- Traversal mode toggle -->
+          <button
+            class="pip-btn pip-btn--traversal"
+            :class="{ 'pip-btn--active': playerStore.traversalMode === 'season' }"
+            :aria-label="traversalLabel"
+            :title="traversalLabel"
+            @click.stop="toggleTraversal"
+          >
+            <CalendarDays v-if="playerStore.traversalMode === 'season'" :size="14" />
+            <Orbit v-else :size="14" />
           </button>
 
           <!-- Volume — click-to-toggle -->
@@ -477,6 +497,16 @@ const handleProgressClick = (event: MouseEvent): void => {
 .pip-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
+}
+
+.pip-btn--active {
+  color: #A78BFA;
+  background: rgba(167, 139, 250, 0.12);
+}
+
+.pip-btn--active:hover {
+  color: #C4B5FD;
+  background: rgba(167, 139, 250, 0.2);
 }
 
 /* Volume wrapper */
