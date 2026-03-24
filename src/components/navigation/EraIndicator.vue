@@ -43,7 +43,7 @@ function isActive(decade: number): boolean {
 <style scoped>
 /* Sidebar — fixed left, vertically centered */
 .era-sidebar {
-  position: fixed;
+  position: absolute;
   top: 50%;
   left: 0.75rem;
   transform: translateY(-50%);
@@ -116,7 +116,7 @@ function isActive(decade: number): boolean {
 
 /* Banner — top center */
 .era-indicator {
-  position: fixed;
+  position: absolute;
   top: 3.5rem;
   left: 50%;
   transform: translateX(-50%);

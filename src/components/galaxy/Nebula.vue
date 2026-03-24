@@ -122,19 +122,26 @@ type TNebulaConfig = {
 };
 
 const listNebulaConfig: TNebulaConfig[] = [
-  // Core glow — indigo heart of the galaxy
-  { color1: '#4F46E5', color2: '#4F46E5', z: -50,  scale: 800, opacity: 0.15, offsetX: 0,    offsetY: 0,    rotationZ: 0,    breathSpeed: 0.15, breathRange: 0.03 },
-  // Purple cloud — drifts slightly off-center
-  { color1: '#7C3AED', color2: '#7C3AED', z: -80,  scale: 600, opacity: 0.10, offsetX: 100,  offsetY: -50,  rotationZ: 0.3,  breathSpeed: 0.10, breathRange: 0.03 },
-  // Warm accent — subtle rose tint
-  { color1: '#F97066', color2: '#F97066', z: -100, scale: 500, opacity: 0.05, offsetX: -80,  offsetY: 100,  rotationZ: -0.2, breathSpeed: 0.20, breathRange: 0.02 },
-  // Cyan/teal accent — adds color variety
-  { color1: '#06B6D4', color2: '#06B6D4', z: -90,  scale: 550, opacity: 0.06, offsetX: -120, offsetY: -80,  rotationZ: 0.5,  breathSpeed: 0.12, breathRange: 0.02 },
+  // Core glow — bright indigo heart of the galaxy
+  { color1: '#4F46E5', color2: '#4F46E5', z: -50,  scale: 900, opacity: 0.22, offsetX: 0,    offsetY: 0,    rotationZ: 0,    breathSpeed: 0.15, breathRange: 0.05 },
+  // Inner purple haze — warm glow around center
+  { color1: '#7C3AED', color2: '#7C3AED', z: -55,  scale: 500, opacity: 0.18, offsetX: 20,   offsetY: -20,  rotationZ: 0.2,  breathSpeed: 0.12, breathRange: 0.04 },
+  // Purple cloud — drifts off-center
+  { color1: '#7C3AED', color2: '#7C3AED', z: -80,  scale: 700, opacity: 0.12, offsetX: 100,  offsetY: -50,  rotationZ: 0.3,  breathSpeed: 0.10, breathRange: 0.04 },
+  // Hot pink accent — vivid pop of color
+  { color1: '#EC4899', color2: '#EC4899', z: -95,  scale: 450, opacity: 0.08, offsetX: -60,  offsetY: 80,   rotationZ: -0.3, breathSpeed: 0.22, breathRange: 0.03 },
+  // Warm accent — rose tint
+  { color1: '#F97066', color2: '#F97066', z: -100, scale: 550, opacity: 0.07, offsetX: -80,  offsetY: 100,  rotationZ: -0.2, breathSpeed: 0.20, breathRange: 0.03 },
+  // Cyan/teal accent — vivid color variety
+  { color1: '#06B6D4', color2: '#06B6D4', z: -90,  scale: 600, opacity: 0.09, offsetX: -140, offsetY: -80,  rotationZ: 0.5,  breathSpeed: 0.14, breathRange: 0.03 },
+  // Emerald accent — green tint for arm diversity
+  { color1: '#10B981', color2: '#10B981', z: -105, scale: 400, opacity: 0.05, offsetX: 160,  offsetY: -100, rotationZ: 0.7,  breathSpeed: 0.16, breathRange: 0.02 },
   // Amber warm glow — outer rim
-  { color1: '#F59E0B', color2: '#F59E0B', z: -110, scale: 400, opacity: 0.04, offsetX: 150,  offsetY: 120,  rotationZ: -0.4, breathSpeed: 0.18, breathRange: 0.015 },
-  // Spiral arm wisp hints (elliptical shape baked into texture)
-  { color1: '#818CF8', color2: '#818CF8', z: -60,  scale: 700, opacity: 0.06, offsetX: 60,  offsetY: 30,  rotationZ: 0.6,  breathSpeed: 0.08, breathRange: 0.02, isWisp: true },
-  { color1: '#A78BFA', color2: '#A78BFA', z: -70,  scale: 650, opacity: 0.05, offsetX: -40, offsetY: -60, rotationZ: -0.8, breathSpeed: 0.09, breathRange: 0.015, isWisp: true },
+  { color1: '#F59E0B', color2: '#F59E0B', z: -110, scale: 500, opacity: 0.06, offsetX: 150,  offsetY: 120,  rotationZ: -0.4, breathSpeed: 0.18, breathRange: 0.02 },
+  // Spiral arm wisps (elliptical shape baked into texture)
+  { color1: '#818CF8', color2: '#818CF8', z: -60,  scale: 800, opacity: 0.08, offsetX: 60,   offsetY: 30,   rotationZ: 0.6,  breathSpeed: 0.08, breathRange: 0.03, isWisp: true },
+  { color1: '#A78BFA', color2: '#A78BFA', z: -70,  scale: 750, opacity: 0.07, offsetX: -40,  offsetY: -60,  rotationZ: -0.8, breathSpeed: 0.09, breathRange: 0.02, isWisp: true },
+  { color1: '#C084FC', color2: '#C084FC', z: -65,  scale: 600, opacity: 0.06, offsetX: -100, offsetY: 50,   rotationZ: 1.2,  breathSpeed: 0.11, breathRange: 0.025, isWisp: true },
 ];
 
 const nebulaGroup = shallowRef<THREE.Group>(markRaw(new THREE.Group()));
@@ -143,8 +150,8 @@ const listTexture: THREE.CanvasTexture[] = [];
 const listMaterial: THREE.MeshBasicMaterial[] = [];
 const listConfig: TNebulaConfig[] = [];
 
-// Very slow rotation — full revolution in ~20 minutes (0.005 rad/s ≈ 0.3°/s)
-const GALAXY_ROTATION_SPEED = 0.005;
+// Gentle rotation — full revolution in ~12 minutes (0.0087 rad/s ≈ 0.5°/s)
+const GALAXY_ROTATION_SPEED = 0.0087;
 
 onMounted(() => {
   const meshes: THREE.Mesh[] = [];

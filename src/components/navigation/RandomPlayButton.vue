@@ -155,7 +155,7 @@ const onWarpClick = (): void => {
    ═══════════════════════════════════════════════ */
 
 .era-dial {
-  position: fixed;
+  position: absolute;
   left: 0.75rem;
   top: 50%;
   transform: translateY(-50%);

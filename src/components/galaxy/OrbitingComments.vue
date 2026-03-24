@@ -247,7 +247,7 @@ onUnmounted(() => {
 
 <style scoped>
 .orbiting-comments {
-  position: fixed;
+  position: absolute;
   z-index: 25;
   pointer-events: none;
   /* transform origin is the star's screen position */

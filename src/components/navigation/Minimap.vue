@@ -193,7 +193,7 @@ const onMinimapClick = (e: MouseEvent) => {
 <style scoped>
 /* Minimap — bottom-right, compact, above genre legend */
 .minimap-wrapper {
-  position: fixed;
+  position: absolute;
   bottom: 1.75rem;
   right: 0.75rem;
   z-index: 20;

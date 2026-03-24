@@ -32,7 +32,7 @@ const TWINKLE_VERTEX = /* glsl */ `
     vOpacity = aOpacity;
     vColor = aColor;
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = 2.0;
+    gl_PointSize = 2.5;
     gl_Position = projectionMatrix * mvPosition;
   }
 `;

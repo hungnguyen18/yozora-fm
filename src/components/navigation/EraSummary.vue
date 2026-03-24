@@ -88,7 +88,7 @@ function navigateToIconic(): void {
 
 <style scoped>
 .era-summary {
-  position: fixed;
+  position: absolute;
   top: 9.5rem; /* sits below the EraIndicator */
   left: 50%;
   transform: translateX(-50%);

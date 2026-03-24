@@ -305,7 +305,7 @@ const handleProgressClick = (event: MouseEvent): void => {
 
 <style scoped>
 .pip-container {
-  position: fixed;
+  position: absolute;
   width: 400px;
   z-index: 55;
   cursor: grab;

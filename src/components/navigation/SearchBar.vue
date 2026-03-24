@@ -347,7 +347,7 @@ const songBadge = (song: ISong): string => {
 
 <style scoped>
 .search-bar-root {
-  position: fixed;
+  position: absolute;
   top: 1rem;
   left: 0;
   right: 0;
@@ -418,7 +418,7 @@ const songBadge = (song: ISong): string => {
 
 /* --- Expanded overlay --- */
 .search-overlay {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100vw;

@@ -13,6 +13,8 @@ import RandomPlayButton from '@/components/navigation/RandomPlayButton.vue';
 import SearchBar from '@/components/navigation/SearchBar.vue';
 import AuthButton from '@/components/ui/AuthButton.vue';
 import UserMenu from '@/components/ui/UserMenu.vue';
+import ShootingStars from '@/components/galaxy/ShootingStars.vue';
+import SpaceObjects from '@/components/galaxy/SpaceObjects.vue';
 import LoadingScreen from '@/components/ui/LoadingScreen.vue';
 import DiscoveryCounter from '@/components/ui/DiscoveryCounter.vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
@@ -111,21 +113,22 @@ onMounted(() => {
     <LoadingScreen :is-loading="isLoading" />
 
     <GalaxyScene @pointerdown="dismissOnboarding" @wheel="dismissOnboarding" />
+    <div class="space-vignette" />
+    <ShootingStars />
+    <SpaceObjects />
     <DetailPanel />
     <PipPlayer />
 
     <!-- Search: outside overlay-ui, trigger fades with UI -->
     <SearchBar :is-visible="isUIVisible" />
 
-    <!-- Overlay UI — hidden during loading, fades on idle, toggle with H key -->
-    <div class="overlay-ui" :class="{ 'overlay-ui--hidden': !isUIVisible || isLoading }">
-      <Minimap />
-      <GenreLegend />
-      <RandomPlayButton />
-      <DiscoveryCounter />
-      <AuthButton v-if="!authStore.isAuthenticated" />
-      <UserMenu v-else />
-    </div>
+    <!-- Overlay UI — each component fades independently to avoid breaking position:fixed -->
+    <Minimap :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
+    <GenreLegend :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
+    <RandomPlayButton :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
+    <DiscoveryCounter :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
+    <AuthButton v-if="!authStore.isAuthenticated" :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
+    <UserMenu v-else :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
 
     <!-- UI toggle button — always visible -->
     <button
@@ -151,17 +154,49 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.overlay-ui {
+/* Space vignette — dark shadow around edges for depth */
+.space-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 65% at 50% 50%,
+    transparent 0%,
+    transparent 40%,
+    rgba(5, 5, 18, 0.3) 70%,
+    rgba(3, 3, 12, 0.6) 90%,
+    rgba(2, 2, 8, 0.85) 100%
+  );
+  animation: vignette-breathe 15s ease-in-out infinite;
+}
+
+@keyframes vignette-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* Per-element fade — avoids wrapping div that breaks position:fixed */
+:deep(.ui-fade-hidden) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.4s ease !important;
+}
+
+/* Override fixed → absolute so elements anchor to the relative root container
+   instead of the viewport — fixes ultra-wide / short-viewport clipping */
+:deep(.minimap-wrapper),
+:deep(.genre-legend),
+:deep(.discovery-counter),
+:deep(.random-play-btn),
+:deep(.auth-button),
+:deep(.user-menu) {
+  position: absolute !important;
   transition: opacity 0.4s ease;
 }
 
-.overlay-ui--hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .ui-toggle {
-  position: fixed;
+  position: absolute;
   bottom: 0.5rem;
   left: 0.5rem;
   z-index: 45;
@@ -192,7 +227,7 @@ onMounted(() => {
 }
 
 .onboarding-tooltip {
-  position: fixed;
+  position: absolute;
   bottom: 6.5rem;
   left: 50%;
   transform: translateX(-50%);

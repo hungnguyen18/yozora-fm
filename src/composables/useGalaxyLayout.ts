@@ -17,7 +17,7 @@ const TOTAL_SPAN_YEARS = 46;
 const NUM_ARMS = 4; // spiral arms
 const ARM_SEPARATION = (Math.PI * 2) / NUM_ARMS; // 90° between arms
 // Logarithmic spiral pitch — smaller = more tightly wound
-const SPIRAL_B = 0.3;
+const SPIRAL_B = 0.22;
 
 // Maps genre to spiral arm index (0–3)
 const GENRE_ARM_MAP: Record<string, number> = {
@@ -101,31 +101,31 @@ const computeStarPosition = (
     }
   }
 
-  // ── Inter-arm disk population (~10%) ──
-  // Scatter some stars at random angles for realistic thin disk
-  if (r5 > 0.9 && distFrac >= BULGE_CUTOFF) {
+  // ── Inter-arm disk population (~6%) ──
+  // Sparse scatter between arms for realistic thin disk
+  if (r5 > 0.94 && distFrac >= BULGE_CUTOFF) {
     const randAngle = r1 * Math.PI * 2;
-    const radialNoise = gaussianRandom(r3, r4) * 0.06;
+    const radialNoise = gaussianRandom(r3, r4) * 0.05;
     const r = Math.max(R_MAX * distFrac * (1 + radialNoise), 2);
     return { x: r * Math.cos(randAngle), y: r * Math.sin(randAngle) };
   }
 
   // ── Logarithmic spiral arm placement ──
   // theta = (1/b) * ln(distFrac + epsilon)
-  // This creates natural winding: tighter near center, opening outward
-  const epsilon = 0.012;
-  const spiralAngle = (1 / SPIRAL_B) * Math.log(distFrac + epsilon) + 14;
+  // Tighter b value → more winding, sharper spiral arms
+  const epsilon = 0.008;
+  const spiralAngle = (1 / SPIRAL_B) * Math.log(distFrac + epsilon) + 16;
   const radius = R_MAX * distFrac;
 
   // Arm base offset (genre determines which arm)
   const armAngle = armIndex * ARM_SEPARATION;
 
-  // Angular jitter: Gaussian, tighter arms near center, wider at rim
-  const armSigma = 0.1 + distFrac * 0.25;
+  // Angular jitter: tight near center for sharp arms, wider at rim
+  const armSigma = 0.06 + distFrac * 0.16;
   const angleJitter = gaussianRandom(r1, r2) * armSigma;
 
   // Radial jitter: proportional to radius for consistent arm look
-  const radialJitter = gaussianRandom(r3, r4) * 0.1;
+  const radialJitter = gaussianRandom(r3, r4) * 0.07;
 
   const finalAngle = spiralAngle + armAngle + angleJitter;
   const finalRadius = Math.max(radius * (1 + radialJitter), 2);

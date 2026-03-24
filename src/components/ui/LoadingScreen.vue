@@ -158,7 +158,7 @@ watch(
 
 <style scoped>
 .loading-screen {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 50;
   background-color: #0A0B1A;

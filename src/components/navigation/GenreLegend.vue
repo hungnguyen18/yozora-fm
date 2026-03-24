@@ -43,7 +43,7 @@ const onGenreClick = (genre: TGenre) => {
 <style scoped>
 /* Genre legend — vertical, left side below era dial */
 .genre-legend {
-  position: fixed;
+  position: absolute;
   bottom: 0.75rem;
   left: 0.75rem;
   z-index: 20;

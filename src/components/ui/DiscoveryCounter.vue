@@ -18,7 +18,7 @@ const { completionPercent } = useExplorerPassport();
 
 <style scoped>
 .discovery-counter {
-  position: fixed;
+  position: absolute;
   bottom: 8.5rem;
   right: 0.75rem;
   z-index: 20;
