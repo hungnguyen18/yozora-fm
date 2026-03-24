@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Added
+
+- **Genre Classification Script** (`npm run enrich:genres`) — Multi-signal classifier using AniList genres/tags, anime genre correlation, artist name patterns, and song type bias. Assigns rock/ballad/electronic/pop/orchestral/other to all 9111 songs
+- **First Contact Discoveries** — Track played songs in localStorage, golden burst animation on first play, "X / 9,111 discovered" counter
+- **Related Stars** — Detail panel shows 5 related songs scored by artist, genre, year proximity
+- **Session Trail** — Glowing line connecting played stars with fade gradient
+
+### Changed
+
+- **Seed pipeline: insert → upsert** — Artists, animes, songs now use `upsert()` with conflict resolution. Re-runs update stale data instead of failing on duplicates
+- **AniList enrichment** — Now fetches `title.native` (JP titles) + 7-day cache TTL (was permanent)
+
+### Fixed
+
+- **Trail Set mutation** — Snapshot `activeTrailStars` before iterating to avoid undefined behavior from `Set.delete()` during `for...of`
+- **applyScaleCap during flyToStar** — Skip 9111-instance matrix recalculation during camera animation, apply once when animation ends
+- **listRecentId reactivity** — Changed to `ref<number[]>` for proper Vue tracking
+- **Session trail rendering** — Bake alpha into RGB, O(1) position lookup
+- **Focus zoom clipping** — Subtract 520px panel width from viewport
+
 ## [0.1.0] - 2026-03-24
 
 ### Added
