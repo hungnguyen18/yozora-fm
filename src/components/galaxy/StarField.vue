@@ -577,6 +577,32 @@ onBeforeRender(({ delta }) => {
     }
   }
 
+  // Playback pulse — active star breathes with simulated BPM
+  if (
+    previousActiveInstanceId !== null
+    && playerStore.isPlaying
+    && discoveryBurstInstanceId !== previousActiveInstanceId
+  ) {
+    const genre = playerStore.currentSong?.genre ?? 'pop';
+    const bpmMap: Record<string, number> = {
+      rock: 140, electronic: 140, pop: 120, ballad: 80, orchestral: 100, other: 110,
+    };
+    const bpm = bpmMap[genre] ?? 110;
+    const beatsPerSec = bpm / 60;
+
+    // Sine wave: 0 to 1, synced to elapsedTime
+    const beat = Math.sin(elapsedTime * beatsPerSec * Math.PI * 2) * 0.5 + 0.5;
+
+    // Subtle scale pulse: base * ACTIVE_SCALE_MULTIPLIER * (1 + beat * 0.15)
+    const baseScale = listBaseScale.value[previousActiveInstanceId] ?? 1;
+    const pulseScale = baseScale * ACTIVE_SCALE_MULTIPLIER * (1 + beat * 0.15);
+    setInstanceScale(mesh, previousActiveInstanceId, pulseScale);
+
+    // Subtle brightness pulse: lerp between white and slightly brighter white
+    const brightness = 0.85 + beat * 0.15;
+    setInstanceColor(mesh, previousActiveInstanceId, brightness, brightness, brightness);
+  }
+
   // Apply star scale cap only when zoom crosses a significant threshold
   // and not during flyToStar animation (avoid 18+ fires of 9111 matrix ops)
   const currentZoom = galaxyStore.zoomLevel;
