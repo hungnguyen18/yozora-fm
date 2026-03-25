@@ -76,6 +76,9 @@ const handleReport = async (commentId: number) => {
   await reportComment(commentId);
 };
 
+const isMac = typeof globalThis.navigator !== 'undefined'
+  && globalThis.navigator.platform?.includes('Mac');
+
 const listPrompt = [
   'This OP hits different...',
   'The nostalgia is real',
@@ -133,7 +136,7 @@ const randomPrompt = listPrompt[Math.floor(Math.random() * listPrompt.length)];
               :class="{ 'chat-input__counter--over': isOverLimit }"
             >{{ charCount }}/280</span>
             <span class="chat-input__hint">
-              <kbd>{{ navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl' }}</kbd>+<kbd>↵</kbd>
+              <kbd>{{ isMac ? '⌘' : 'Ctrl' }}</kbd>+<kbd>↵</kbd>
             </span>
           </span>
         </div>
