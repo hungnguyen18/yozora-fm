@@ -109,6 +109,7 @@ export interface IComment {
   id: number;
   song_id: number;
   user_id: string | null; // UUID — null for anonymous comments
+  guest_name: string | null; // Persisted display name for anonymous commenters
   content: string;
   report_count: number;
   status: TCommentStatus;

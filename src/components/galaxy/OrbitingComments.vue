@@ -185,7 +185,7 @@ watch(
     }
 
     elapsed.value = 0;
-    isVisible.value = true;
+    isVisible.value = playerStore.isExplicitActivation;
     await fetchAndBuild(song.id);
     subscribeRealtime(song.id);
   },

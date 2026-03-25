@@ -3,7 +3,8 @@ export default { name: 'GalaxyView' };
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useEventListener, useTimeoutFn } from '@vueuse/core';
 import GalaxyScene from '@/components/galaxy/GalaxyScene.vue';
 import DetailPanel from '@/components/player/DetailPanel.vue';
 import PipPlayer from '@/components/player/PipPlayer.vue';
@@ -24,6 +25,7 @@ import { useKeyboardNav } from '@/composables/useKeyboardNav';
 import { useRouting } from '@/composables/useRouting';
 import { useDiscovery } from '@/composables/useDiscovery';
 import { useExplorerPassport } from '@/composables/useExplorerPassport';
+import { usePresenceActivity } from '@/composables/usePresenceActivity';
 
 const authStore = useAuthStore();
 const galaxyDataStore = useGalaxyDataStore();
@@ -32,6 +34,7 @@ useKeyboardNav();
 useRouting();
 useDiscovery();
 useExplorerPassport();
+usePresenceActivity();
 
 const isLoading = computed(() => galaxyDataStore.isLoading);
 
@@ -39,41 +42,37 @@ const isLoading = computed(() => galaxyDataStore.isLoading);
 const isUIVisible = ref(true);
 const isUILocked = ref(false);
 const IDLE_TIMEOUT_MS = 4000;
-let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+const { start: startIdleTimer, stop: stopIdleTimer } = useTimeoutFn(() => {
+  if (!isUILocked.value) {
+    isUIVisible.value = false;
+  }
+}, IDLE_TIMEOUT_MS, { immediate: false });
 
 const showUI = (): void => {
   if (isUILocked.value) { return; }
   isUIVisible.value = true;
-  if (idleTimer) { clearTimeout(idleTimer); }
-  idleTimer = setTimeout(() => {
-    if (!isUILocked.value) {
-      isUIVisible.value = false;
-    }
-  }, IDLE_TIMEOUT_MS);
+  stopIdleTimer();
+  startIdleTimer();
 };
 
 const toggleUI = (): void => {
   isUILocked.value = !isUILocked.value;
   isUIVisible.value = isUILocked.value;
-  if (idleTimer) { clearTimeout(idleTimer); }
+  stopIdleTimer();
 };
 
-const onKeyDown = (e: KeyboardEvent): void => {
+// Auto-cleanup on unmount via useEventListener
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   if (e.key === 'h' || e.key === 'H') {
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') { return; }
     toggleUI();
   }
-};
-
-onMounted(() => {
-  window.addEventListener('keydown', onKeyDown);
-  showUI();
 });
 
-onUnmounted(() => {
-  window.removeEventListener('keydown', onKeyDown);
-  if (idleTimer) { clearTimeout(idleTimer); }
+onMounted(() => {
+  showUI();
 });
 
 // Format song count with locale separators (e.g. "9,111")
@@ -86,23 +85,17 @@ const songCountLabel = computed(() => {
 const ONBOARDING_KEY = 'yozora_hasSeenOnboarding';
 const hasSeenOnboarding = ref(localStorage.getItem(ONBOARDING_KEY) === 'true');
 const isOnboardingVisible = ref(!hasSeenOnboarding.value);
-let onboardingTimer: ReturnType<typeof setTimeout> | null = null;
+
+const { stop: stopOnboardingTimer } = useTimeoutFn(() => {
+  dismissOnboarding();
+}, 5000, { immediate: isOnboardingVisible.value });
 
 const dismissOnboarding = () => {
   if (!isOnboardingVisible.value) { return; }
   isOnboardingVisible.value = false;
   localStorage.setItem(ONBOARDING_KEY, 'true');
-  if (onboardingTimer !== null) {
-    clearTimeout(onboardingTimer);
-    onboardingTimer = null;
-  }
+  stopOnboardingTimer();
 };
-
-onMounted(() => {
-  if (isOnboardingVisible.value) {
-    onboardingTimer = setTimeout(dismissOnboarding, 5000);
-  }
-});
 </script>
 
 <template>

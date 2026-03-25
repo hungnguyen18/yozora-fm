@@ -84,7 +84,7 @@ const totalItem = computed(() =>
 
 // ── Actions ──
 const onSelectSong = (song: ISong) => {
-  playerStore.play(song);
+  playerStore.play(song, true);
   galaxyStore.selectedSongId = song.id;
   galaxyStore.flyToStar(song.id);
   close();

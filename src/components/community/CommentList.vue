@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, toRef } from 'vue';
+import { ref, computed, toRef, nextTick } from 'vue';
 import { formatTimeAgo } from '@vueuse/core';
-import { Flag, Trash2 } from 'lucide-vue-next';
+import { Flag, Trash2, MessageCircle, Send, ChevronDown } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useComments } from '@/composables/useComments';
 import { useGuestIdentity } from '@/composables/useGuestIdentity';
@@ -21,15 +21,37 @@ const { guestName } = useGuestIdentity();
 
 const newContent = ref('');
 const isSubmitting = ref(false);
+const isFocused = ref(false);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const charCount = computed(() => newContent.value.length);
 const isOverLimit = computed(() => charCount.value > 280);
 const canSubmit = computed(
   () => charCount.value > 0 && !isOverLimit.value && !isSubmitting.value,
 );
+const isExpanded = computed(() => isFocused.value || newContent.value.length > 0);
+
+const displayName = computed(() => {
+  if (authStore.isAuthenticated && authStore.user) {
+    return authStore.user.nickname ?? 'You';
+  }
+  return guestName.value;
+});
+
+const avatarInitial = computed(() => displayName.value.charAt(0).toUpperCase());
 
 const formatRelativeTime = (createdAt: string): string => {
   return formatTimeAgo(new Date(createdAt));
+};
+
+const handleFocus = () => {
+  isFocused.value = true;
+};
+
+const handleBlur = () => {
+  if (newContent.value.length === 0) {
+    isFocused.value = false;
+  }
 };
 
 const handleSubmit = async () => {
@@ -41,6 +63,9 @@ const handleSubmit = async () => {
   await addComment(newContent.value);
   newContent.value = '';
   isSubmitting.value = false;
+  isFocused.value = false;
+  await nextTick();
+  textareaRef.value?.blur();
 };
 
 const handleDelete = async (commentId: number) => {
@@ -50,351 +75,536 @@ const handleDelete = async (commentId: number) => {
 const handleReport = async (commentId: number) => {
   await reportComment(commentId);
 };
+
+const listPrompt = [
+  'This OP hits different...',
+  'The nostalgia is real',
+  'Best anime opening ever?',
+  'This brings back memories',
+];
+const randomPrompt = listPrompt[Math.floor(Math.random() * listPrompt.length)];
 </script>
 
 <template>
-  <div class="comment-list">
-    <h3 class="comment-list__heading">Comments</h3>
-
-    <!-- Comment input — visible for all users (anonymous allowed) -->
-    <div class="comment-form">
-      <p v-if="!authStore.isAuthenticated" class="comment-form__anon-hint">
-        Posting as {{ guestName }}
-      </p>
-      <textarea
-        v-model="newContent"
-        class="comment-form__textarea"
-        :class="{ 'comment-form__textarea--over': isOverLimit }"
-        placeholder="Share your thoughts… (max 280 chars)"
-        rows="3"
-        maxlength="300"
-        @keydown.ctrl.enter="handleSubmit"
-        @keydown.meta.enter="handleSubmit"
-      />
-      <div class="comment-form__footer">
-        <span
-          class="comment-form__counter"
-          :class="{ 'comment-form__counter--over': isOverLimit }"
-        >
-          {{ charCount }}/280
-        </span>
+  <div class="comment-section">
+    <!-- Compact chat-like input -->
+    <div
+      class="chat-input"
+      :class="{ 'chat-input--expanded': isExpanded }"
+    >
+      <!-- Avatar + input row -->
+      <div class="chat-input__row">
+        <span class="chat-input__avatar">{{ avatarInitial }}</span>
+        <div class="chat-input__field-wrap">
+          <textarea
+            ref="textareaRef"
+            v-model="newContent"
+            class="chat-input__field"
+            :class="{ 'chat-input__field--over': isOverLimit }"
+            :placeholder="randomPrompt"
+            :rows="isExpanded ? 3 : 1"
+            maxlength="300"
+            @focus="handleFocus"
+            @blur="handleBlur"
+            @keydown.ctrl.enter="handleSubmit"
+            @keydown.meta.enter="handleSubmit"
+          />
+        </div>
         <button
-          class="comment-form__submit"
+          class="chat-input__send"
+          :class="{ 'chat-input__send--active': canSubmit }"
           :disabled="!canSubmit"
+          aria-label="Post comment"
           @click="handleSubmit"
         >
-          {{ isSubmitting ? 'Posting…' : 'Post' }}
+          <Send :size="14" />
         </button>
       </div>
+
+      <!-- Expanded footer -->
+      <Transition name="expand-footer">
+        <div v-if="isExpanded" class="chat-input__footer">
+          <span class="chat-input__identity">
+            as <strong>{{ displayName }}</strong>
+          </span>
+          <span class="chat-input__meta">
+            <span
+              class="chat-input__counter"
+              :class="{ 'chat-input__counter--over': isOverLimit }"
+            >{{ charCount }}/280</span>
+            <span class="chat-input__hint">
+              <kbd>{{ navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl' }}</kbd>+<kbd>↵</kbd>
+            </span>
+          </span>
+        </div>
+      </Transition>
     </div>
 
-    <!-- Comment list -->
-    <ul v-if="listComment.length > 0" class="comment-list__items">
-      <li
-        v-for="comment in listComment"
-        :key="comment.id"
-        class="comment-item"
-      >
-        <!-- Avatar + nickname -->
-        <div class="comment-item__header">
-          <img
-            v-if="comment.user?.avatarUrl"
-            :src="comment.user.avatarUrl"
-            :alt="comment.user.nickname"
-            class="comment-item__avatar"
-          />
-          <span v-else class="comment-item__avatar comment-item__avatar--placeholder">
-            {{ (comment.user?.nickname ?? guestName).charAt(0).toUpperCase() }}
-          </span>
+    <!-- Comments thread -->
+    <div class="thread">
+      <TransitionGroup name="comment-pop">
+        <div
+          v-for="comment in listComment"
+          :key="comment.id"
+          class="bubble"
+        >
+          <div class="bubble__header">
+            <img
+              v-if="comment.user?.avatarUrl"
+              :src="comment.user.avatarUrl"
+              :alt="comment.user.nickname"
+              class="bubble__avatar"
+            />
+            <span v-else class="bubble__avatar bubble__avatar--gen">
+              {{ (comment.guest_name ?? comment.user?.nickname ?? '?').charAt(0).toUpperCase() }}
+            </span>
 
-          <span class="comment-item__nickname">
-            {{ comment.user?.nickname ?? guestName }}
-          </span>
-          <span class="comment-item__time">
-            {{ formatRelativeTime(comment.created_at) }}
-          </span>
+            <span class="bubble__name">
+              {{ comment.guest_name ?? comment.user?.nickname ?? 'Traveler' }}
+            </span>
+            <span class="bubble__time">
+              {{ formatRelativeTime(comment.created_at) }}
+            </span>
 
-          <!-- Action buttons -->
-          <div class="comment-item__actions">
-            <!-- Delete — own comment only -->
-            <button
-              v-if="comment.user_id === authStore.user?.id"
-              class="comment-item__action comment-item__action--delete"
-              aria-label="Delete comment"
-              title="Delete"
-              @click="handleDelete(comment.id)"
-            >
-              <Trash2 :size="14" />
-            </button>
-
-            <!-- Report — hover-visible flag -->
-            <button
-              class="comment-item__action comment-item__action--report"
-              aria-label="Report comment"
-              title="Report"
-              @click="handleReport(comment.id)"
-            >
-              <Flag :size="14" />
-            </button>
+            <div class="bubble__actions">
+              <button
+                v-if="comment.user_id === authStore.user?.id"
+                class="bubble__action bubble__action--delete"
+                aria-label="Delete comment"
+                title="Delete"
+                @click="handleDelete(comment.id)"
+              >
+                <Trash2 :size="12" />
+              </button>
+              <button
+                class="bubble__action bubble__action--report"
+                aria-label="Report comment"
+                title="Report"
+                @click="handleReport(comment.id)"
+              >
+                <Flag :size="12" />
+              </button>
+            </div>
           </div>
+          <p class="bubble__text">{{ comment.content }}</p>
         </div>
+      </TransitionGroup>
 
-        <!-- Content -->
-        <p class="comment-item__content">{{ comment.content }}</p>
-      </li>
-    </ul>
+      <!-- Empty state — warm and inviting -->
+      <div v-if="listComment.length === 0 && !isLoading" class="empty-state">
+        <div class="empty-state__icon">
+          <MessageCircle :size="20" />
+        </div>
+        <p class="empty-state__text">
+          Be the first to leave a note on this star
+        </p>
+      </div>
 
-    <!-- Empty state -->
-    <p v-else-if="!isLoading" class="comment-list__empty">
-      No comments yet. Be the first to share your thoughts!
-    </p>
+      <!-- Loading -->
+      <div v-if="isLoading" class="thread-loading">
+        <div class="thread-loading__dot" />
+        <div class="thread-loading__dot" />
+        <div class="thread-loading__dot" />
+      </div>
 
-    <!-- Loading indicator -->
-    <p v-if="isLoading" class="comment-list__loading">Loading…</p>
-
-    <!-- Load more -->
-    <button
-      v-if="hasMore && !isLoading"
-      class="comment-list__load-more"
-      @click="loadMore"
-    >
-      Load more
-    </button>
+      <!-- Load more -->
+      <button
+        v-if="hasMore && !isLoading"
+        class="thread-more"
+        @click="loadMore"
+      >
+        <ChevronDown :size="14" />
+        <span>Earlier comments</span>
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* Container */
-.comment-list {
+/* ═══════════════════════════════════════════
+   COMMENT SECTION — Chat-like redesign
+   ═══════════════════════════════════════════ */
+
+.comment-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-.comment-list__heading {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #9B9BB4;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-/* Comment form */
-.comment-form {
+/* ── Chat Input ── */
+.chat-input {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  background-color: rgba(20, 21, 41, 0.5);
-  border: 1px solid rgba(155, 155, 180, 0.15);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(155, 155, 180, 0.1);
+  background: rgba(20, 21, 41, 0.4);
+  padding: 8px 10px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.comment-form__anon-hint {
-  margin: 0 0 4px;
-  font-size: 0.75rem;
-  color: #9B9BB4;
-  font-style: italic;
+.chat-input--expanded {
+  border-color: rgba(129, 140, 248, 0.25);
+  background: rgba(20, 21, 41, 0.6);
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.08),
+              0 4px 24px rgba(0, 0, 0, 0.2);
 }
 
-.comment-form__textarea {
+.chat-input__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.chat-input__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.chat-input__field-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-input__field {
   width: 100%;
-  resize: vertical;
+  resize: none;
   background: transparent;
   border: none;
   outline: none;
   color: #E8E8F0;
   font-size: 0.8125rem;
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
+  line-height: 1.5;
+  padding: 4px 0;
+  transition: height 0.2s ease;
+}
+
+.chat-input__field::placeholder {
+  color: rgba(155, 155, 180, 0.4);
+  font-style: italic;
+}
+
+.chat-input__field--over {
+  color: #F97066;
+}
+
+.chat-input__send {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(155, 155, 180, 0.1);
+  color: rgba(155, 155, 180, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.chat-input__send--active {
+  background: linear-gradient(135deg, #6366F1, #818CF8);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.chat-input__send--active:hover {
+  transform: scale(1.08);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.5);
+}
+
+.chat-input__send:disabled {
+  cursor: default;
+}
+
+/* Footer row — expands in */
+.chat-input__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0 0 36px; /* align with text field */
+}
+
+.chat-input__identity {
+  font-size: 0.6875rem;
+  color: rgba(155, 155, 180, 0.45);
+}
+
+.chat-input__identity strong {
+  color: rgba(155, 155, 180, 0.65);
+  font-weight: 600;
+}
+
+.chat-input__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-input__counter {
+  font-size: 0.6875rem;
+  color: rgba(155, 155, 180, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-input__counter--over {
+  color: #F97066;
+}
+
+.chat-input__hint {
+  font-size: 0.625rem;
+  color: rgba(155, 155, 180, 0.3);
+}
+
+.chat-input__hint kbd {
+  display: inline-block;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: rgba(155, 155, 180, 0.08);
+  border: 1px solid rgba(155, 155, 180, 0.12);
+  font-family: inherit;
+  font-size: inherit;
   line-height: 1.5;
 }
 
-.comment-form__textarea::placeholder {
-  color: rgba(155, 155, 180, 0.6);
+/* Footer expand transition */
+.expand-footer-enter-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.expand-footer-leave-active {
+  transition: all 0.15s ease;
+}
+.expand-footer-enter-from,
+.expand-footer-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+  max-height: 0;
+}
+.expand-footer-enter-to,
+.expand-footer-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 40px;
 }
 
-.comment-form__textarea--over {
-  color: #F97066;
-}
-
-.comment-form__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.comment-form__counter {
-  font-size: 0.75rem;
-  color: #9B9BB4;
-}
-
-.comment-form__counter--over {
-  color: #F97066;
-}
-
-.comment-form__submit {
-  padding: 4px 14px;
-  border-radius: 6px;
-  border: none;
-  background-color: #4F46E5;
-  color: #E8E8F0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.comment-form__submit:hover:not(:disabled) {
-  background-color: #6366F1;
-}
-
-.comment-form__submit:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Comment items */
-.comment-list__items {
+/* ── Thread ── */
+.thread {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  gap: 6px;
 }
 
-.comment-item {
+/* Comment bubble */
+.bubble {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px 10px;
-  background-color: rgba(20, 21, 41, 0.5);
-  border: 1px solid rgba(155, 155, 180, 0.1);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(20, 21, 41, 0.35);
+  border: 1px solid rgba(155, 155, 180, 0.06);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.comment-item__header {
+.bubble:hover {
+  background: rgba(20, 21, 41, 0.55);
+  border-color: rgba(155, 155, 180, 0.1);
+}
+
+.bubble__header {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-/* Avatar */
-.comment-item__avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 9999px;
+.bubble__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
 }
 
-.comment-item__avatar--placeholder {
+.bubble__avatar--gen {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #4F46E5;
-  color: #E8E8F0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.6), rgba(139, 92, 246, 0.6));
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.625rem;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bubble__name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(200, 200, 220, 0.85);
+}
+
+.bubble__time {
   font-size: 0.6875rem;
-  font-weight: 600;
-  /* width/height inherited from avatar class via shared selector */
-  width: 24px;
-  height: 24px;
-  border-radius: 9999px;
-  flex-shrink: 0;
+  color: rgba(155, 155, 180, 0.4);
 }
 
-.comment-item__nickname {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #E8E8F0;
-  flex-shrink: 0;
-}
-
-.comment-item__time {
-  font-size: 0.75rem;
-  color: #9B9BB4;
-  flex-shrink: 0;
-}
-
-/* Action buttons — push to right */
-.comment-item__actions {
+.bubble__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.comment-item__action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  transition: opacity 0.15s, color 0.15s;
-  font-size: 0.75rem;
-  color: #9B9BB4;
-}
-
-.comment-item__action:hover {
+.bubble:hover .bubble__actions {
   opacity: 1;
 }
 
-.comment-item__action--delete:hover {
+.bubble__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  color: rgba(155, 155, 180, 0.5);
+  transition: color 0.15s, background 0.15s;
+}
+
+.bubble__action:hover {
+  background: rgba(155, 155, 180, 0.08);
+}
+
+.bubble__action--delete:hover {
   color: #F97066;
 }
 
-/* Report button is subtle — only fully visible on hover of parent */
-.comment-item__action--report {
-  opacity: 0;
-}
-
-.comment-item:hover .comment-item__action--report {
-  opacity: 0.5;
-}
-
-.comment-item__action--report:hover {
-  opacity: 1 !important;
+.bubble__action--report:hover {
   color: #F59E0B;
 }
 
-/* Comment content */
-.comment-item__content {
+.bubble__text {
   font-size: 0.8125rem;
-  color: #E8E8F0;
+  color: rgba(232, 232, 240, 0.9);
   line-height: 1.55;
   word-break: break-word;
   margin: 0;
-  padding-left: 30px; /* aligns with text after avatar */
+  padding-left: 28px;
 }
 
-/* States */
-.comment-list__empty,
-.comment-list__loading {
-  font-size: 0.8125rem;
-  color: #9B9BB4;
-  text-align: center;
-  padding: 12px 0;
+/* Comment pop-in animation */
+.comment-pop-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.comment-pop-leave-active {
+  transition: all 0.2s ease;
+}
+.comment-pop-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
+.comment-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+.comment-pop-move {
+  transition: transform 0.3s ease;
 }
 
-/* Load more */
-.comment-list__load-more {
+/* ── Empty State ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 0 8px;
+}
+
+.empty-state__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.08);
+  color: rgba(129, 140, 248, 0.4);
+  animation: emptyPulse 3s ease-in-out infinite;
+}
+
+@keyframes emptyPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.empty-state__text {
+  font-size: 0.75rem;
+  color: rgba(155, 155, 180, 0.45);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Loading dots ── */
+.thread-loading {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  padding: 16px 0;
+}
+
+.thread-loading__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(129, 140, 248, 0.4);
+  animation: loadBounce 1.2s ease-in-out infinite;
+}
+
+.thread-loading__dot:nth-child(2) { animation-delay: 0.15s; }
+.thread-loading__dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes loadBounce {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ── Load more ── */
+.thread-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   align-self: center;
   background: transparent;
-  border: 1px solid rgba(155, 155, 180, 0.25);
-  border-radius: 6px;
-  color: #9B9BB4;
-  font-size: 0.8125rem;
-  padding: 6px 18px;
+  border: none;
+  color: rgba(155, 155, 180, 0.45);
+  font-size: 0.75rem;
+  padding: 6px 14px;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
 }
 
-.comment-list__load-more:hover {
-  border-color: rgba(155, 155, 180, 0.5);
-  color: #E8E8F0;
+.thread-more:hover {
+  color: rgba(155, 155, 180, 0.7);
+  background: rgba(155, 155, 180, 0.06);
 }
 </style>

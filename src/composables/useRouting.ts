@@ -61,7 +61,7 @@ export const useRouting = () => {
         const song = songsStore.listSong.find((s) => s.id === songId);
         if (song) {
           galaxyStore.selectedSongId = songId;
-          playerStore.play(song);
+          playerStore.play(song, true);
           galaxyStore.flyToStar(songId);
         }
       } else if (route.name === "galaxy") {
@@ -91,7 +91,7 @@ export const useRouting = () => {
       const song = songsStore.listSong.find((s) => s.id === songId);
       if (song) {
         galaxyStore.selectedSongId = songId;
-        playerStore.play(song);
+        playerStore.play(song, true);
         galaxyStore.flyToStar(songId);
       }
       return true;

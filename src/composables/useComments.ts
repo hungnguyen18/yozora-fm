@@ -26,7 +26,9 @@ export const useComments = (songId: Ref<number>) => {
 
     const { data } = await supabase
       .from("comments")
-      .select("id, song_id, user_id, content, report_count, status, created_at")
+      .select(
+        "id, song_id, user_id, guest_name, content, report_count, status, created_at",
+      )
       .eq("song_id", id)
       .eq("status", "visible")
       .order("created_at", { ascending: false })
@@ -56,7 +58,9 @@ export const useComments = (songId: Ref<number>) => {
 
     const { data } = await supabase
       .from("comments")
-      .select("id, song_id, user_id, content, report_count, status, created_at")
+      .select(
+        "id, song_id, user_id, guest_name, content, report_count, status, created_at",
+      )
       .eq("song_id", songId.value)
       .eq("status", "visible")
       .order("created_at", { ascending: false })

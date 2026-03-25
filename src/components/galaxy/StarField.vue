@@ -491,6 +491,38 @@ let trailBrightness: Float32Array = new Float32Array(0);
 // Per-instance time (in seconds) since the trail last passed this star; -1 = never touched
 let trailPassTime: Float32Array = new Float32Array(0);
 
+// ── Presence activity glow — stars with active viewers glow brighter ──
+// Per-instance activity brightness multiplier (1.0 = normal, up to 3.5)
+let activityBrightness: Float32Array = new Float32Array(0);
+// Per-instance activity scale multiplier (1.0 = normal, up to 2.5)
+let activityScale: Float32Array = new Float32Array(0);
+// Set of instance indices with active viewers (sparse iteration)
+const activeActivityStars = new Set<number>();
+// Track last processed version to detect presence sync updates
+let lastActivityVersion = 0;
+// Activity pulse helper color
+const activityColorHelper = new THREE.Color();
+// Temp matrix and vec for activity scale updates
+const activityScaleMatrix = new THREE.Matrix4();
+const activityTempMatrix = new THREE.Matrix4();
+const activityTempPos = new THREE.Vector3();
+
+// Logarithmic brightness multiplier: dramatic glow, clearly visible
+const activityMultiplier = (viewerCount: number): number => {
+  if (viewerCount === 0) { return 1.0; }
+  // 1 viewer = 2.0x, 2 = 2.5x, 4 = 3.0x, capped at 3.5x
+  const raw = 1.5 + 0.5 * Math.log2(viewerCount + 1);
+  return Math.min(raw, 3.5);
+};
+
+// Scale multiplier: make active stars bigger so they stand out
+const activityScaleMultiplier = (viewerCount: number): number => {
+  if (viewerCount === 0) { return 1.0; }
+  // 1 viewer = 1.6x, 2 = 1.8x, 4 = 2.0x, capped at 2.5x
+  const raw = 1.3 + 0.3 * Math.log2(viewerCount + 1);
+  return Math.min(raw, 2.5);
+};
+
 // Allocate / reallocate trail arrays whenever the mesh is rebuilt
 watch(instancedMesh, (mesh) => {
   if (!mesh) { return; }
@@ -498,6 +530,10 @@ watch(instancedMesh, (mesh) => {
   trailBrightness = new Float32Array(count);
   trailPassTime = new Float32Array(count).fill(-1);
   activeTrailStars.clear();
+  activityBrightness = new Float32Array(count).fill(1);
+  activityScale = new Float32Array(count).fill(1);
+  activeActivityStars.clear();
+  lastActivityVersion = 0;
 });
 
 // Build trail spatial index when world positions become available
@@ -631,10 +667,100 @@ onBeforeRender(({ delta }) => {
     applyScaleCap(mesh, currentZoom);
     lastAppliedZoom = currentZoom;
   }
-  // Force one scale cap update when flyToStar animation ends (zoom changed during it)
-  if (!isAnimating && lastAppliedZoom >= 0 && Math.abs(currentZoom - lastAppliedZoom) > 0.01) {
-    applyScaleCap(mesh, currentZoom);
-    lastAppliedZoom = currentZoom;
+
+  // ── Presence activity glow pass ──────────────────────────────────────
+  let needsActivityColorUpdate = false;
+
+  // On presence sync (~every 2-3s): diff the activity map and update brightness
+  const currentActivityVersion = galaxyStore.activityVersion;
+  if (currentActivityVersion !== lastActivityVersion) {
+    lastActivityVersion = currentActivityVersion;
+    const mapActivity = galaxyStore.mapActivityCount;
+
+    // Collect indices to remove (avoids Array.from allocation)
+    const listToRemove: number[] = [];
+    for (const idx of activeActivityStars) {
+      const star = galaxyDataStore.listStar[idx];
+      if (!star || !mapActivity.has(star.id)) {
+        listToRemove.push(idx);
+      }
+    }
+    for (let k = 0; k < listToRemove.length; k += 1) {
+      const idx = listToRemove[k];
+      activityBrightness[idx] = 1.0;
+      activityScale[idx] = 1.0;
+      activeActivityStars.delete(idx);
+      if (idx !== previousActiveInstanceId) {
+        const effective = getEffectiveColor(idx);
+        if (effective) {
+          activityColorHelper.setRGB(effective.r, effective.g, effective.b);
+          mesh.setColorAt(idx, activityColorHelper);
+          needsActivityColorUpdate = true;
+        }
+        mesh.getMatrixAt(idx, activityTempMatrix);
+        activityTempPos.setFromMatrixPosition(activityTempMatrix);
+        activityScaleMatrix.makeScale(1, 1, 1);
+        activityScaleMatrix.setPosition(activityTempPos);
+        mesh.setMatrixAt(idx, activityScaleMatrix);
+        mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+
+    // Add/update stars that are active
+    for (const [songId, viewerCount] of mapActivity) {
+      const idx = galaxyDataStore.mapIdToIndex.get(songId);
+      if (idx === undefined) { continue; }
+      activityBrightness[idx] = activityMultiplier(viewerCount);
+      activityScale[idx] = activityScaleMultiplier(viewerCount);
+      activeActivityStars.add(idx);
+    }
+  }
+
+  // Per-frame: apply pulsing glow + scale to active-viewer stars
+  if (activeActivityStars.size > 0) {
+    // 0.5 Hz pulse, +/- 25% amplitude — clearly visible breathing
+    const pulse = 1 + 0.25 * Math.sin(elapsedTime * 0.5 * Math.PI * 2);
+    // Scale pulse slightly offset for organic feel
+    const scalePulse = 1 + 0.12 * Math.sin(elapsedTime * 0.5 * Math.PI * 2 + 0.5);
+    let needsMatrixUpdate = false;
+
+    for (const idx of activeActivityStars) {
+      // Skip the locally playing star — it has its own BPM pulse
+      if (idx === previousActiveInstanceId) { continue; }
+      // Skip stars currently in trail effect — trail overrides
+      if (activeTrailStars.has(idx)) { continue; }
+      // Skip during discovery burst
+      if (idx === discoveryBurstInstanceId) { continue; }
+
+      const effective = getEffectiveColor(idx);
+      if (!effective) { continue; }
+
+      const brightness = activityBrightness[idx] * pulse;
+      activityColorHelper.setRGB(
+        Math.min(effective.r * brightness, 3),
+        Math.min(effective.g * brightness, 3),
+        Math.min(effective.b * brightness, 3),
+      );
+      mesh.setColorAt(idx, activityColorHelper);
+      needsActivityColorUpdate = true;
+
+      // Scale up active stars so they visually pop
+      const targetScale = activityScale[idx] * scalePulse;
+      mesh.getMatrixAt(idx, activityTempMatrix);
+      activityTempPos.setFromMatrixPosition(activityTempMatrix);
+      activityScaleMatrix.makeScale(targetScale, targetScale, 1);
+      activityScaleMatrix.setPosition(activityTempPos);
+      mesh.setMatrixAt(idx, activityScaleMatrix);
+      needsMatrixUpdate = true;
+    }
+
+    if (needsMatrixUpdate) {
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  if (needsActivityColorUpdate && mesh.instanceColor) {
+    mesh.instanceColor.needsUpdate = true;
   }
 
   // Determine current trail head position via lerp when trail is active

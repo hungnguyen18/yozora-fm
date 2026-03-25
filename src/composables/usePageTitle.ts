@@ -1,4 +1,5 @@
-import { watch, onUnmounted } from "vue";
+import { watch } from "vue";
+import { useIntervalFn } from "@vueuse/core";
 import { usePlayerStore } from "@/stores/player";
 
 const DEFAULT_TITLE = "Yozora.fm \u2014 Anime Music Galaxy";
@@ -12,15 +13,22 @@ const SEPARATOR = "   \u266B   ";
 export const usePageTitle = () => {
   const playerStore = usePlayerStore();
 
-  let intervalId: ReturnType<typeof setInterval> | null = null;
   let scrollOffset = 0;
   let fullText = "";
 
+  // useIntervalFn auto-pauses on unmount — no manual cleanup needed
+  const { pause, resume } = useIntervalFn(
+    () => {
+      scrollOffset = (scrollOffset + 1) % fullText.length;
+      document.title =
+        fullText.slice(scrollOffset) + fullText.slice(0, scrollOffset);
+    },
+    SCROLL_SPEED_MS,
+    { immediate: false },
+  );
+
   const stopScroll = (): void => {
-    if (intervalId !== null) {
-      clearInterval(intervalId);
-      intervalId = null;
-    }
+    pause();
     scrollOffset = 0;
   };
 
@@ -29,12 +37,7 @@ export const usePageTitle = () => {
     fullText = text + SEPARATOR;
     scrollOffset = 0;
     document.title = text;
-
-    intervalId = setInterval(() => {
-      scrollOffset = (scrollOffset + 1) % fullText.length;
-      document.title =
-        fullText.slice(scrollOffset) + fullText.slice(0, scrollOffset);
-    }, SCROLL_SPEED_MS);
+    resume();
   };
 
   watch(
@@ -50,8 +53,4 @@ export const usePageTitle = () => {
     },
     { immediate: true },
   );
-
-  onUnmounted(() => {
-    stopScroll();
-  });
 };

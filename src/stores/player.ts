@@ -11,6 +11,7 @@ export const usePlayerStore = defineStore("player", () => {
   const isPip = ref(false);
   const progress = ref(0); // 0–1 representing playback position
   const commentVersion = ref(0); // bumped when a comment is added locally
+  const isExplicitActivation = ref(false); // true when user clicked a star, false on auto-play
 
   // Persisted preferences via useLocalStorage
   const volume = useLocalStorage("yozora_player_volume", 0.8);
@@ -24,9 +25,10 @@ export const usePlayerStore = defineStore("player", () => {
   const MAX_RECENT = 20;
   const listRecentId = ref<number[]>([]);
 
-  function play(song: ISong) {
+  function play(song: ISong, explicit = false) {
     currentSong.value = song;
     isPlaying.value = true;
+    isExplicitActivation.value = explicit;
     progress.value = 0;
 
     // Track recently played to prevent next() ping-pong
@@ -226,7 +228,7 @@ export const usePlayerStore = defineStore("player", () => {
 
     const picked =
       listCandidate[Math.floor(Math.random() * listCandidate.length)];
-    play(picked);
+    play(picked, true);
     galaxyStore.selectedSongId = picked.id;
     galaxyStore.flyToStar(picked.id);
   }
@@ -257,6 +259,7 @@ export const usePlayerStore = defineStore("player", () => {
     isPip,
     progress,
     commentVersion,
+    isExplicitActivation,
     volume,
     autoPlay,
     traversalMode,

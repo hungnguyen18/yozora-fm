@@ -28,7 +28,7 @@ const { listRelated } = useRelatedSongs(
 
 const songRelatedSelect = (relatedSong: ISong) => {
   galaxyStore.flyToStar(relatedSong.id);
-  playerStore.play(relatedSong);
+  playerStore.play(relatedSong, true);
 };
 
 const songRelatedGenreColor = (genre?: string) => {
@@ -339,27 +339,64 @@ const shareSong = async () => {
             <div class="section-divider" :style="{ borderColor: `${genreColor}15` }" />
             <div class="related-header">
               <Sparkles :size="14" />
-              <span>Related Stars</span>
+              <span>Up Next</span>
             </div>
             <div class="related-list">
               <button
                 v-for="related in listRelated"
                 :key="related.id"
-                class="related-item"
+                class="related-card"
                 @click="songRelatedSelect(related)"
               >
+                <!-- Accent stripe -->
                 <span
-                  class="related-item__dot"
-                  :style="{ backgroundColor: songRelatedGenreColor(related.genre) }"
+                  class="related-card__accent"
+                  :style="{ background: `linear-gradient(180deg, ${songRelatedGenreColor(related.genre)}, ${songRelatedGenreColor(related.genre)}40)` }"
                 />
-                <div class="related-item__info">
-                  <span class="related-item__title">{{ related.title }}</span>
-                  <span class="related-item__meta">
+
+                <!-- Cover art thumbnail -->
+                <div class="related-card__thumb">
+                  <img
+                    v-if="related.anime?.cover_url || related.album_art_url"
+                    :src="related.anime?.cover_url ?? related.album_art_url ?? ''"
+                    :alt="related.title"
+                    class="related-card__thumb-img"
+                  />
+                  <div
+                    v-else
+                    class="related-card__thumb-fallback"
+                    :style="{ background: `linear-gradient(135deg, ${songRelatedGenreColor(related.genre)}30, ${songRelatedGenreColor(related.genre)}10)` }"
+                  >
+                    <span
+                      class="related-card__thumb-glyph"
+                      :style="{ color: songRelatedGenreColor(related.genre) }"
+                    >{{ related.type === 'OP' ? '◉' : '◈' }}</span>
+                  </div>
+                  <!-- Play overlay on hover -->
+                  <div class="related-card__play-overlay">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Song info -->
+                <div class="related-card__info">
+                  <span class="related-card__title">{{ related.title }}</span>
+                  <span class="related-card__meta">
                     {{ related.artist?.name ?? 'Unknown' }}
-                    <template v-if="related.year"> &middot; {{ related.year }}</template>
+                    <template v-if="related.year">
+                      <span class="related-card__dot">&middot;</span>
+                      {{ related.year }}
+                    </template>
                   </span>
                 </div>
-                <ChevronRight :size="12" class="related-item__arrow" />
+
+                <!-- Type badge -->
+                <span
+                  class="related-card__type"
+                  :style="{ color: songRelatedGenreColor(related.genre), borderColor: `${songRelatedGenreColor(related.genre)}40` }"
+                >{{ related.type }}{{ related.sequence ?? '' }}</span>
               </button>
             </div>
           </div>
@@ -803,7 +840,7 @@ const shareSong = async () => {
 }
 
 /* ═══════════════════════════════════════════════
-   RELATED STARS
+   RELATED STARS — Card layout with thumbnails
    ═══════════════════════════════════════════════ */
 
 .related-section {
@@ -825,75 +862,151 @@ const shareSong = async () => {
 .related-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
-.related-item {
+.related-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
+  padding: 6px 10px 6px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(155, 155, 180, 0.06);
+  background: rgba(20, 21, 41, 0.3);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
+  overflow: hidden;
 }
 
-.related-item:hover {
-  background: rgba(155, 155, 180, 0.06);
-  border-color: rgba(155, 155, 180, 0.1);
+.related-card:hover {
+  background: rgba(20, 21, 41, 0.55);
+  border-color: rgba(155, 155, 180, 0.12);
+  transform: translateX(2px);
 }
 
-.related-item:focus-visible {
+.related-card:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.8);
 }
 
-.related-item__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 6px currentColor;
+/* Left accent stripe */
+.related-card__accent {
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+  border-radius: 0 1px 1px 0;
+  opacity: 0.6;
+  transition: opacity 0.2s;
 }
 
-.related-item__info {
+.related-card:hover .related-card__accent {
+  opacity: 1;
+}
+
+/* Thumbnail */
+.related-card__thumb {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.related-card__thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.related-card__thumb-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.related-card__thumb-glyph {
+  font-size: 1rem;
+  opacity: 0.6;
+}
+
+.related-card__play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  backdrop-filter: blur(2px);
+}
+
+.related-card:hover .related-card__play-overlay {
+  opacity: 1;
+}
+
+/* Info */
+.related-card__info {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
   flex: 1;
 }
 
-.related-item__title {
+.related-card__title {
   font-size: 0.8125rem;
   color: rgba(232, 232, 240, 0.9);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.15s;
 }
 
-.related-item__meta {
+.related-card:hover .related-card__title {
+  color: #E8E8F0;
+}
+
+.related-card__meta {
   font-size: 0.6875rem;
-  color: rgba(155, 155, 180, 0.5);
+  color: rgba(155, 155, 180, 0.45);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.related-item__arrow {
-  flex-shrink: 0;
-  color: rgba(155, 155, 180, 0.25);
-  transition: transform 0.2s ease, color 0.2s ease;
+.related-card__dot {
+  margin: 0 1px;
 }
 
-.related-item:hover .related-item__arrow {
-  transform: translateX(2px);
-  color: rgba(155, 155, 180, 0.5);
+/* Type badge */
+.related-card__type {
+  flex-shrink: 0;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.related-card:hover .related-card__type {
+  opacity: 1;
 }
 
 /* ═══════════════════════════════════════════════

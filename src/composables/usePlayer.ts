@@ -44,7 +44,6 @@ let progressTrackingInstalled = false;
 
 let watcherInstalled = false;
 let pendingSong: ISong | null = null;
-let skipNextWatcherPlay = false;
 let crossfadeRafId = 0;
 let crossfadeCleanup: (() => void) | null = null;
 
@@ -254,7 +253,6 @@ export const usePlayer = () => {
     }
 
     pendingSong = null;
-    skipNextWatcherPlay = true;
     isLoading.value = true;
 
     current.pause();
@@ -432,10 +430,6 @@ export const usePlayer = () => {
       () => playerStore.currentSong,
       (newSong, oldSong) => {
         if (!newSong) {
-          return;
-        }
-        if (skipNextWatcherPlay) {
-          skipNextWatcherPlay = false;
           return;
         }
         if (oldSong) {

@@ -39,6 +39,9 @@ export const useGalaxyStore = defineStore("galaxy", {
     trailEnd: null as { x: number; y: number } | null,
     trailProgress: 0,
     isTrailActive: false,
+    // Presence activity: songId → viewer count (excluding self), updated by usePresenceActivity
+    mapActivityCount: new Map<number, number>(),
+    activityVersion: 0,
   }),
   getters: {
     currentEra: (state): IEra | null => state.focusedEra,

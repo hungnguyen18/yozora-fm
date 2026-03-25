@@ -182,7 +182,7 @@ export const useStarInteraction = (
         tooltipVisible.value = false;
 
         galaxyStore.flyToStar(song.id);
-        playerStore.play(song);
+        playerStore.play(song, true);
       }
     }
   };

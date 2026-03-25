@@ -1,14 +1,15 @@
-import { ref, watch } from "vue";
+import { ref, watch, onUnmounted } from "vue";
 import type { Ref } from "vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
-import { useRealtimeVotes } from "@/composables/useRealtime";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export const useVote = (songId: Ref<number>) => {
   const authStore = useAuthStore();
   const hasVoted = ref(false);
   const voteCount = ref(0);
   const isLoading = ref(false);
+  let voteChannel: RealtimeChannel | null = null;
 
   const fetchVoteState = async (id: number) => {
     // Fetch current vote count
@@ -81,19 +82,55 @@ export const useVote = (songId: Ref<number>) => {
     isLoading.value = false;
   };
 
-  // Subscribe to realtime vote count changes
-  useRealtimeVotes(songId.value, (newCount: number) => {
-    voteCount.value = newCount;
-  });
+  // Subscribe to realtime vote count changes — re-subscribes when songId changes
+  const subscribeVotes = (id: number): void => {
+    if (voteChannel) {
+      supabase.removeChannel(voteChannel);
+      voteChannel = null;
+    }
 
-  // Re-fetch vote state when song changes
+    voteChannel = supabase
+      .channel(`votes:${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "votes",
+          filter: `song_id=eq.${id}`,
+        },
+        () => {
+          supabase
+            .from("songs")
+            .select("vote_count")
+            .eq("id", id)
+            .single()
+            .then(({ data }) => {
+              if (data) {
+                voteCount.value = (data as { vote_count: number }).vote_count;
+              }
+            });
+        },
+      )
+      .subscribe();
+  };
+
+  // Re-fetch vote state + re-subscribe realtime when song changes
   watch(
     songId,
     (newId) => {
       fetchVoteState(newId);
+      subscribeVotes(newId);
     },
     { immediate: true },
   );
+
+  onUnmounted(() => {
+    if (voteChannel) {
+      supabase.removeChannel(voteChannel);
+      voteChannel = null;
+    }
+  });
 
   return {
     hasVoted,
