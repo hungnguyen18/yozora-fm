@@ -2,16 +2,12 @@
 import { computed, ref, toRef } from 'vue';
 import { Lightbulb, AlertCircle } from 'lucide-vue-next';
 import { useTrivia } from '@/composables/useTrivia';
-import { useAuthStore } from '@/stores/auth';
 
 type TTriviaSectionProps = {
   songId: number;
 };
 
 const props = defineProps<TTriviaSectionProps>();
-
-const authStore = useAuthStore();
-const isAuthenticated = computed(() => authStore.isAuthenticated);
 
 const songIdRef = toRef(props, 'songId');
 const { listTrivia, isLoading, isSubmitting, error, submitTrivia, upvoteTrivia, reportTrivia } =
@@ -58,9 +54,6 @@ const handleSubmit = async () => {
       >
         <p class="trivia-item__content">{{ item.content }}</p>
         <div class="trivia-item__meta">
-          <span v-if="item.user" class="trivia-item__author">
-            by {{ item.user.nickname }}
-          </span>
           <div class="trivia-item__actions">
             <!-- Report button — subtle, appears on hover -->
             <button
@@ -96,8 +89,8 @@ const handleSubmit = async () => {
       <span class="trivia-error__text">{{ error }}</span>
     </div>
 
-    <!-- Add trivia form — shown only when authenticated -->
-    <div v-if="isAuthenticated" class="trivia-form">
+    <!-- Add trivia form -->
+    <div class="trivia-form">
       <textarea
         v-model="newTriviaContent"
         class="trivia-form__textarea"

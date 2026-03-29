@@ -1,7 +1,6 @@
 import { ref, watch } from "vue";
 import type { Ref } from "vue";
 import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/stores/auth";
 import { usePlayerStore } from "@/stores/player";
 import { useRealtimeComments } from "@/composables/useRealtime";
 import { useGuestIdentity } from "@/composables/useGuestIdentity";
@@ -10,9 +9,8 @@ import type { IComment } from "@/types";
 const PAGE_SIZE = 5;
 
 export const useComments = (songId: Ref<number>) => {
-  const authStore = useAuthStore();
   const playerStore = usePlayerStore();
-  const { guestName } = useGuestIdentity();
+  const { guestName, guestId } = useGuestIdentity();
   const listComment = ref<IComment[]>([]);
   const isLoading = ref(false);
   const hasMore = ref(true);
@@ -81,15 +79,10 @@ export const useComments = (songId: Ref<number>) => {
       return;
     }
 
-    // Anonymous comments allowed — user_id is null for guests
-    const displayName = authStore.user
-      ? (authStore.user.nickname ?? "Anonymous")
-      : guestName.value;
-
     const { error } = await supabase.from("comments").insert({
       song_id: songId.value,
-      user_id: authStore.user?.id ?? null,
-      guest_name: displayName,
+      user_id: guestId.value,
+      guest_name: guestName.value,
       content: trimmed,
     });
 
@@ -111,15 +104,11 @@ export const useComments = (songId: Ref<number>) => {
   };
 
   const deleteComment = async (commentId: number) => {
-    if (!authStore.isAuthenticated || !authStore.user) {
-      return;
-    }
-
     await supabase
       .from("comments")
       .delete()
       .eq("id", commentId)
-      .eq("user_id", authStore.user.id);
+      .eq("user_id", guestId.value);
 
     listComment.value = listComment.value.filter((c) => c.id !== commentId);
   };

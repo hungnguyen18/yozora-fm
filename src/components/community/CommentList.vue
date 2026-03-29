@@ -2,7 +2,6 @@
 import { ref, computed, toRef, nextTick } from 'vue';
 import { formatTimeAgo } from '@vueuse/core';
 import { Flag, Trash2, MessageCircle, Send, ChevronDown } from 'lucide-vue-next';
-import { useAuthStore } from '@/stores/auth';
 import { useComments } from '@/composables/useComments';
 import { useGuestIdentity } from '@/composables/useGuestIdentity';
 
@@ -12,12 +11,11 @@ type TCommentListProps = {
 
 const props = defineProps<TCommentListProps>();
 
-const authStore = useAuthStore();
 const songIdRef = toRef(props, 'songId');
 
 const { listComment, isLoading, hasMore, loadMore, addComment, deleteComment, reportComment } =
   useComments(songIdRef);
-const { guestName } = useGuestIdentity();
+const { guestName, guestId } = useGuestIdentity();
 
 const newContent = ref('');
 const isSubmitting = ref(false);
@@ -31,12 +29,7 @@ const canSubmit = computed(
 );
 const isExpanded = computed(() => isFocused.value || newContent.value.length > 0);
 
-const displayName = computed(() => {
-  if (authStore.isAuthenticated && authStore.user) {
-    return authStore.user.nickname ?? 'You';
-  }
-  return guestName.value;
-});
+const displayName = computed(() => guestName.value);
 
 const avatarInitial = computed(() => displayName.value.charAt(0).toUpperCase());
 
@@ -152,18 +145,12 @@ const randomPrompt = listPrompt[Math.floor(Math.random() * listPrompt.length)];
           class="bubble"
         >
           <div class="bubble__header">
-            <img
-              v-if="comment.user?.avatarUrl"
-              :src="comment.user.avatarUrl"
-              :alt="comment.user.nickname"
-              class="bubble__avatar"
-            />
-            <span v-else class="bubble__avatar bubble__avatar--gen">
-              {{ (comment.guest_name ?? comment.user?.nickname ?? '?').charAt(0).toUpperCase() }}
+            <span class="bubble__avatar bubble__avatar--gen">
+              {{ (comment.guest_name ?? '?').charAt(0).toUpperCase() }}
             </span>
 
             <span class="bubble__name">
-              {{ comment.guest_name ?? comment.user?.nickname ?? 'Traveler' }}
+              {{ comment.guest_name ?? 'Traveler' }}
             </span>
             <span class="bubble__time">
               {{ formatRelativeTime(comment.created_at) }}
@@ -171,7 +158,7 @@ const randomPrompt = listPrompt[Math.floor(Math.random() * listPrompt.length)];
 
             <div class="bubble__actions">
               <button
-                v-if="comment.user_id === authStore.user?.id"
+                v-if="comment.user_id === guestId"
                 class="bubble__action bubble__action--delete"
                 aria-label="Delete comment"
                 title="Delete"

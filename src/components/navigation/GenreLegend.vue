@@ -41,15 +41,15 @@ const onGenreClick = (genre: TGenre) => {
 </template>
 
 <style scoped>
-/* Genre legend — vertical, left side below era dial */
+/* Genre legend — 2-column grid, left side below era dial */
 .genre-legend {
   position: absolute;
   bottom: 0.75rem;
   left: 0.75rem;
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
   padding: 5px 7px;
   border-radius: 8px;
   background: rgba(13, 14, 34, 0.5);

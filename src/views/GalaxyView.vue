@@ -12,23 +12,21 @@ import GenreLegend from '@/components/navigation/GenreLegend.vue';
 import Minimap from '@/components/navigation/Minimap.vue';
 import RandomPlayButton from '@/components/navigation/RandomPlayButton.vue';
 import SearchBar from '@/components/navigation/SearchBar.vue';
-import AuthButton from '@/components/ui/AuthButton.vue';
-import UserMenu from '@/components/ui/UserMenu.vue';
 import ShootingStars from '@/components/galaxy/ShootingStars.vue';
 import SpaceObjects from '@/components/galaxy/SpaceObjects.vue';
 import LoadingScreen from '@/components/ui/LoadingScreen.vue';
 import DiscoveryCounter from '@/components/ui/DiscoveryCounter.vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
-import { useAuthStore } from '@/stores/auth';
 import { useGalaxyDataStore } from '@/stores/galaxy-data';
+import { useGalaxyStore } from '@/stores/galaxy';
 import { useKeyboardNav } from '@/composables/useKeyboardNav';
 import { useRouting } from '@/composables/useRouting';
 import { useDiscovery } from '@/composables/useDiscovery';
 import { useExplorerPassport } from '@/composables/useExplorerPassport';
 import { usePresenceActivity } from '@/composables/usePresenceActivity';
 
-const authStore = useAuthStore();
 const galaxyDataStore = useGalaxyDataStore();
+const galaxyStore = useGalaxyStore();
 
 useKeyboardNav();
 useRouting();
@@ -43,8 +41,10 @@ const isUIVisible = ref(true);
 const isUILocked = ref(false);
 const IDLE_TIMEOUT_MS = 4000;
 
+const isDetailPanelOpen = computed(() => galaxyStore.selectedSongId !== null);
+
 const { start: startIdleTimer, stop: stopIdleTimer } = useTimeoutFn(() => {
-  if (!isUILocked.value) {
+  if (!isUILocked.value && !isDetailPanelOpen.value) {
     isUIVisible.value = false;
   }
 }, IDLE_TIMEOUT_MS, { immediate: false });
@@ -53,7 +53,10 @@ const showUI = (): void => {
   if (isUILocked.value) { return; }
   isUIVisible.value = true;
   stopIdleTimer();
-  startIdleTimer();
+  // Don't start idle timer when detail panel is open — user is actively browsing
+  if (!isDetailPanelOpen.value) {
+    startIdleTimer();
+  }
 };
 
 const toggleUI = (): void => {
@@ -120,8 +123,6 @@ const dismissOnboarding = () => {
     <GenreLegend :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
     <RandomPlayButton :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
     <DiscoveryCounter :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
-    <AuthButton v-if="!authStore.isAuthenticated" :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
-    <UserMenu v-else :class="{ 'ui-fade-hidden': !isUIVisible || isLoading }" />
 
     <!-- UI toggle button — always visible -->
     <button
@@ -181,9 +182,7 @@ const dismissOnboarding = () => {
 :deep(.minimap-wrapper),
 :deep(.genre-legend),
 :deep(.discovery-counter),
-:deep(.random-play-btn),
-:deep(.auth-button),
-:deep(.user-menu) {
+:deep(.random-play-btn) {
   position: absolute !important;
   transition: opacity 0.4s ease;
 }

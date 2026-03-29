@@ -20,13 +20,25 @@ const ARM_SEPARATION = (Math.PI * 2) / NUM_ARMS; // 90° between arms
 const SPIRAL_B = 0.22;
 
 // Maps genre to spiral arm index (0–3)
+// Arm 0: aggressive — rock, metal, punk
+// Arm 1: synth/groove — electronic, hip-hop, jazz
+// Arm 2: bright/upbeat — pop, idol, r-and-b, reggae, other
+// Arm 3: mellow/epic — ballad, folk, orchestral
 const GENRE_ARM_MAP: Record<string, number> = {
   rock: 0,
+  metal: 0,
+  punk: 0,
   electronic: 1,
+  "hip-hop": 1,
+  jazz: 1,
   pop: 2,
-  ballad: 3,
-  orchestral: 0,
+  idol: 2,
+  "r-and-b": 2,
+  reggae: 2,
   other: 2,
+  ballad: 3,
+  folk: 3,
+  orchestral: 3,
 };
 
 // Mulberry32 seeded PRNG for reproducible per-song jitter

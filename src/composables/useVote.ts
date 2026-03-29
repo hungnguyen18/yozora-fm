@@ -1,11 +1,11 @@
 import { ref, watch, onUnmounted } from "vue";
 import type { Ref } from "vue";
 import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/stores/auth";
+import { useGuestIdentity } from "@/composables/useGuestIdentity";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export const useVote = (songId: Ref<number>) => {
-  const authStore = useAuthStore();
+  const { guestId } = useGuestIdentity();
   const hasVoted = ref(false);
   const voteCount = ref(0);
   const isLoading = ref(false);
@@ -23,36 +23,31 @@ export const useVote = (songId: Ref<number>) => {
       voteCount.value = (songData as { vote_count: number }).vote_count;
     }
 
-    // Check if the authenticated user has voted on this song
-    if (!authStore.isAuthenticated || !authStore.user) {
-      hasVoted.value = false;
-      return;
-    }
-
+    // Check if this guest has voted on this song
     const { data: voteData } = await supabase
       .from("votes")
       .select("user_id")
       .eq("song_id", id)
-      .eq("user_id", authStore.user.id)
+      .eq("user_id", guestId.value)
       .maybeSingle();
 
     hasVoted.value = voteData !== null;
   };
 
   const toggleVote = async () => {
-    if (!authStore.isAuthenticated || !authStore.user || isLoading.value) {
+    if (isLoading.value) {
       return;
     }
 
     isLoading.value = true;
 
-    // Optimistic update
+    // Optimistic update (clamp to 0 to prevent negative counts)
     const previousHasVoted = hasVoted.value;
     const previousVoteCount = voteCount.value;
 
     hasVoted.value = !previousHasVoted;
     voteCount.value = previousHasVoted
-      ? previousVoteCount - 1
+      ? Math.max(previousVoteCount - 1, 0)
       : previousVoteCount + 1;
 
     if (previousHasVoted) {
@@ -60,25 +55,25 @@ export const useVote = (songId: Ref<number>) => {
         .from("votes")
         .delete()
         .eq("song_id", songId.value)
-        .eq("user_id", authStore.user.id);
+        .eq("user_id", guestId.value);
 
       if (error) {
-        // Rollback on error
         hasVoted.value = previousHasVoted;
         voteCount.value = previousVoteCount;
       }
     } else {
       const { error } = await supabase
         .from("votes")
-        .insert({ song_id: songId.value, user_id: authStore.user.id });
+        .insert({ song_id: songId.value, user_id: guestId.value });
 
       if (error) {
-        // Rollback on error
         hasVoted.value = previousHasVoted;
         voteCount.value = previousVoteCount;
       }
     }
 
+    // Re-fetch actual state to correct any drift between optimistic UI and DB
+    await fetchVoteState(songId.value);
     isLoading.value = false;
   };
 

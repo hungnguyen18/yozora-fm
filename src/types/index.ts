@@ -12,9 +12,17 @@ export type TCommentStatus = "visible" | "reported";
 
 export type TGenre =
   | "rock"
-  | "ballad"
+  | "metal"
+  | "punk"
   | "electronic"
+  | "hip-hop"
+  | "jazz"
   | "pop"
+  | "idol"
+  | "r-and-b"
+  | "reggae"
+  | "ballad"
+  | "folk"
   | "orchestral"
   | "other";
 
@@ -27,12 +35,20 @@ export type TLodTier = "far" | "mid" | "close";
 
 // Maps each genre to its representative star/label colour in the galaxy view
 export const GENRE_COLOR_MAP: Record<TGenre, string> = {
-  rock: "#F97316", // red-orange
-  ballad: "#3B82F6", // blue
+  rock: "#F97316", // orange
+  metal: "#EF4444", // red
+  punk: "#F43F5E", // rose
   electronic: "#A855F7", // purple
+  "hip-hop": "#8B5CF6", // violet
+  jazz: "#14B8A6", // teal
   pop: "#EC4899", // pink
+  idol: "#F472B6", // light pink
+  "r-and-b": "#D946EF", // fuchsia
+  reggae: "#22C55E", // green
+  ballad: "#3B82F6", // blue
+  folk: "#06B6D4", // cyan
   orchestral: "#F59E0B", // gold
-  other: "#C0C0D0", // white-silver
+  other: "#C0C0D0", // silver
 };
 
 // ---------------------------------------------------------------------------
@@ -84,13 +100,6 @@ export interface IVote {
   created_at: string;
 }
 
-export interface IUser {
-  id: string; // UUID from Supabase Auth
-  nickname: string;
-  avatarUrl: string;
-  provider: "google" | "github";
-}
-
 export interface ITrivia {
   id: number;
   song_id: number;
@@ -100,9 +109,6 @@ export interface ITrivia {
   report_count: number;
   status: TTriviaStatus;
   created_at: string;
-
-  // Populated when joining auth/profile data for display
-  user?: IUser;
 }
 
 export interface IComment {
@@ -114,9 +120,6 @@ export interface IComment {
   report_count: number;
   status: TCommentStatus;
   created_at: string;
-
-  // Populated when joining auth/profile data for display
-  user?: IUser;
 }
 
 export interface ITriviaUpvote {

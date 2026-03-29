@@ -1,14 +1,14 @@
 import { ref, watch } from "vue";
 import type { Ref } from "vue";
 import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/stores/auth";
+import { useGuestIdentity } from "@/composables/useGuestIdentity";
 import type { ITrivia } from "@/types";
 
 const MAX_TRIVIA_CONTENT_LENGTH = 500;
 const TRIVIA_DISPLAY_LIMIT = 3;
 
 export const useTrivia = (songId: Ref<number>) => {
-  const authStore = useAuthStore();
+  const { guestId } = useGuestIdentity();
   const listTrivia = ref<ITrivia[]>([]);
   const isLoading = ref(false);
   const isSubmitting = ref(false);
@@ -36,11 +36,6 @@ export const useTrivia = (songId: Ref<number>) => {
   };
 
   const submitTrivia = async (content: string) => {
-    if (!authStore.isAuthenticated || !authStore.user) {
-      error.value = "Authentication required to submit trivia.";
-      return;
-    }
-
     const trimmed = content.trim();
 
     if (trimmed.length === 0 || trimmed.length > MAX_TRIVIA_CONTENT_LENGTH) {
@@ -53,7 +48,7 @@ export const useTrivia = (songId: Ref<number>) => {
 
     const { error: insertError } = await supabase.from("trivia").insert({
       song_id: songId.value,
-      user_id: authStore.user.id,
+      user_id: guestId.value,
       content: trimmed,
     });
 
@@ -65,11 +60,6 @@ export const useTrivia = (songId: Ref<number>) => {
   };
 
   const upvoteTrivia = async (triviaId: number) => {
-    if (!authStore.isAuthenticated || !authStore.user) {
-      error.value = "Authentication required to upvote.";
-      return;
-    }
-
     // Optimistic update on the local list
     const item = listTrivia.value.find((t) => t.id === triviaId);
     if (item) {
@@ -78,7 +68,7 @@ export const useTrivia = (songId: Ref<number>) => {
 
     const { error: upvoteError } = await supabase
       .from("trivia_upvotes")
-      .insert({ trivia_id: triviaId, user_id: authStore.user.id });
+      .insert({ trivia_id: triviaId, user_id: guestId.value });
 
     if (upvoteError) {
       // Rollback optimistic update on failure

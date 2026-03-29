@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, toRef } from 'vue';
+import { toRef } from 'vue';
 import { useVote } from '@/composables/useVote';
-import { useAuthStore } from '@/stores/auth';
 
 type TVoteButtonProps = {
   songId: number;
@@ -9,18 +8,8 @@ type TVoteButtonProps = {
 
 const props = defineProps<TVoteButtonProps>();
 
-const authStore = useAuthStore();
-const isAuthenticated = computed(() => authStore.isAuthenticated);
-
 const songIdRef = toRef(props, 'songId');
 const { hasVoted, voteCount, isLoading, toggleVote } = useVote(songIdRef);
-
-const handleClick = () => {
-  if (!isAuthenticated.value) {
-    return;
-  }
-  toggleVote();
-};
 </script>
 
 <template>
@@ -28,24 +17,16 @@ const handleClick = () => {
     <button
       class="vote-btn"
       :class="{ 'vote-btn--voted': hasVoted, 'vote-btn--loading': isLoading }"
-      :disabled="!isAuthenticated || isLoading"
-      :title="isAuthenticated ? (hasVoted ? 'Remove vote' : 'Vote for this song') : 'Sign in to vote'"
-      :aria-label="isAuthenticated ? (hasVoted ? 'Remove vote' : 'Vote for this song') : 'Sign in to vote'"
-      @click="handleClick"
+      :disabled="isLoading"
+      :title="hasVoted ? 'Remove vote' : 'Vote for this song'"
+      :aria-label="hasVoted ? 'Remove vote' : 'Vote for this song'"
+      @click="toggleVote"
     >
       <span class="vote-btn__icon" :class="{ 'vote-btn__icon--glow': hasVoted }">
         {{ hasVoted ? '⭐' : '☆' }}
       </span>
       <span class="vote-btn__count">{{ voteCount }}</span>
     </button>
-
-    <span
-      v-if="!isAuthenticated"
-      class="vote-tooltip"
-      aria-hidden="true"
-    >
-      Sign in to vote
-    </span>
   </div>
 </template>
 
@@ -83,7 +64,6 @@ const handleClick = () => {
 }
 
 .vote-btn:disabled {
-  cursor: not-allowed;
   opacity: 0.6;
 }
 
@@ -129,25 +109,4 @@ const handleClick = () => {
   }
 }
 
-/* Tooltip */
-.vote-tooltip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1E1E30;
-  border: 1px solid rgba(155, 155, 180, 0.2);
-  color: #9B9BB4;
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.vote-button-wrapper:hover .vote-tooltip {
-  opacity: 1;
-}
 </style>

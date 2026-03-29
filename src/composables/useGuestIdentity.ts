@@ -89,7 +89,8 @@ export const guestNameFromId = (id: number): string => {
   return `${name}${suffix}`;
 };
 
-const STORAGE_KEY = "yozora_guest_name";
+const STORAGE_KEY_NAME = "yozora_guest_name";
+const STORAGE_KEY_ID = "yozora_guest_id";
 
 const generateGuestName = (): string => {
   const name =
@@ -100,9 +101,13 @@ const generateGuestName = (): string => {
 };
 
 export const useGuestIdentity = () => {
-  const guestName = useLocalStorage(STORAGE_KEY, generateGuestName());
+  const guestName = useLocalStorage(STORAGE_KEY_NAME, generateGuestName());
+  const guestId = useLocalStorage(STORAGE_KEY_ID, crypto.randomUUID());
   if (!guestName.value) {
     guestName.value = generateGuestName();
   }
-  return { guestName };
+  if (!guestId.value) {
+    guestId.value = crypto.randomUUID();
+  }
+  return { guestName, guestId };
 };

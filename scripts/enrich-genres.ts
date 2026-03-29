@@ -61,7 +61,21 @@ const CACHE_PATH = resolve(CACHE_DIR, "anilist-genres.json");
 // Types
 // ---------------------------------------------------------------------------
 
-type TGenre = "rock" | "ballad" | "electronic" | "pop" | "orchestral" | "other";
+type TGenre =
+  | "rock"
+  | "metal"
+  | "punk"
+  | "electronic"
+  | "hip-hop"
+  | "jazz"
+  | "pop"
+  | "idol"
+  | "r-and-b"
+  | "reggae"
+  | "ballad"
+  | "folk"
+  | "orchestral"
+  | "other";
 
 interface ISongRow {
   id: number;
@@ -240,20 +254,47 @@ const fetchAnilistGenreData = async (
 // Genre classification
 // ---------------------------------------------------------------------------
 
+const LIST_ALL_GENRE: TGenre[] = [
+  "rock",
+  "metal",
+  "punk",
+  "electronic",
+  "hip-hop",
+  "jazz",
+  "pop",
+  "idol",
+  "r-and-b",
+  "reggae",
+  "ballad",
+  "folk",
+  "orchestral",
+  "other",
+];
+
+const makeScores = (): Record<TGenre, number> => ({
+  rock: 0,
+  metal: 0,
+  punk: 0,
+  electronic: 0,
+  "hip-hop": 0,
+  jazz: 0,
+  pop: 0,
+  idol: 0,
+  "r-and-b": 0,
+  reggae: 0,
+  ballad: 0,
+  folk: 0,
+  orchestral: 0,
+  other: 0,
+});
+
 const classifyGenre = (
   anilistGenres: string[],
   anilistTags: string[],
   artistName: string,
   songType: "OP" | "ED",
 ): TGenre => {
-  const scores: Record<TGenre, number> = {
-    rock: 0,
-    ballad: 0,
-    electronic: 0,
-    pop: 0,
-    orchestral: 0,
-    other: 0,
-  };
+  const scores = makeScores();
 
   // -------------------------------------------------------------------------
   // Signal 1: AniList tags (strongest signal)
@@ -261,18 +302,22 @@ const classifyGenre = (
   const listTagLower = anilistTags.map((t) => t.toLowerCase());
 
   if (
-    listTagLower.some((t) =>
-      ["band", "rock", "metal", "punk", "visual kei"].includes(t),
-    )
+    listTagLower.some((t) => ["metal", "heavy metal", "visual kei"].includes(t))
   ) {
+    scores.metal += 5;
+  }
+  if (listTagLower.some((t) => ["punk"].includes(t))) {
+    scores.punk += 5;
+  }
+  if (listTagLower.some((t) => ["band", "rock"].includes(t))) {
     scores.rock += 5;
   }
   if (
     listTagLower.some((t) =>
-      ["idol", "idols", "idol group", "female idol"].includes(t),
+      ["idol", "idols", "idol group", "female idol", "male idol"].includes(t),
     )
   ) {
-    scores.pop += 4;
+    scores.idol += 5;
   }
   if (
     listTagLower.some((t) =>
@@ -293,12 +338,22 @@ const classifyGenre = (
   ) {
     scores.electronic += 3;
   }
+  if (listTagLower.some((t) => ["hip-hop", "rap", "hip hop"].includes(t))) {
+    scores["hip-hop"] += 5;
+  }
+  if (listTagLower.some((t) => ["jazz"].includes(t))) {
+    scores.jazz += 5;
+  }
   if (
-    listTagLower.some((t) =>
-      ["primarily female cast", "cute girls doing cute things"].includes(t),
-    )
+    listTagLower.some((t) => ["folk", "traditional", "historical"].includes(t))
   ) {
-    scores.pop += 2;
+    scores.folk += 4;
+  }
+  if (listTagLower.some((t) => ["r&b", "soul", "funk"].includes(t))) {
+    scores["r-and-b"] += 5;
+  }
+  if (listTagLower.some((t) => ["reggae", "ska", "latin"].includes(t))) {
+    scores.reggae += 5;
   }
   if (
     listTagLower.some((t) =>
@@ -306,13 +361,21 @@ const classifyGenre = (
     )
   ) {
     scores.rock += 3;
+    scores.electronic += 1;
   }
   if (listTagLower.some((t) => ["war", "military"].includes(t))) {
     scores.orchestral += 2;
   }
+  if (
+    listTagLower.some((t) =>
+      ["primarily female cast", "cute girls doing cute things"].includes(t),
+    )
+  ) {
+    scores.pop += 2;
+  }
 
   // -------------------------------------------------------------------------
-  // Signal 2: AniList genres
+  // Signal 2: AniList genres (broader, weaker signal)
   // -------------------------------------------------------------------------
   const listGenreLower = anilistGenres.map((g) => g.toLowerCase());
 
@@ -342,6 +405,7 @@ const classifyGenre = (
     listGenreLower.includes("thriller")
   ) {
     scores.rock += 1;
+    scores.metal += 1;
   }
   if (listGenreLower.includes("mecha")) {
     scores.electronic += 2;
@@ -359,15 +423,36 @@ const classifyGenre = (
   // -------------------------------------------------------------------------
   const artistLower = artistName.toLowerCase();
 
+  if (/\bmetal\b/.test(artistLower) || /\bvisual\s?kei\b/.test(artistLower)) {
+    scores.metal += 4;
+  }
+  if (/\bpunk\b/.test(artistLower)) {
+    scores.punk += 4;
+  }
   if (/\bband\b/.test(artistLower) || /\brock\b/.test(artistLower)) {
     scores.rock += 3;
   }
   if (
     /\bdj\b/.test(artistLower) ||
     /\belectr/.test(artistLower) ||
-    /\btrance\b/.test(artistLower)
+    /\btrance\b/.test(artistLower) ||
+    /\bedm\b/.test(artistLower)
   ) {
     scores.electronic += 3;
+  }
+  if (
+    /\bhip[\s-]?hop\b/.test(artistLower) ||
+    /\brap\b/.test(artistLower) ||
+    /\bmc\s/.test(artistLower)
+  ) {
+    scores["hip-hop"] += 4;
+  }
+  if (
+    /\bjazz\b/.test(artistLower) ||
+    /\bfusion\b/.test(artistLower) ||
+    /\bswing\b/.test(artistLower)
+  ) {
+    scores.jazz += 4;
   }
   if (
     /\borchestra\b/.test(artistLower) ||
@@ -375,6 +460,22 @@ const classifyGenre = (
     /\bensemble\b/.test(artistLower)
   ) {
     scores.orchestral += 4;
+  }
+  if (/\bfolk\b/.test(artistLower) || /\bacoustic\b/.test(artistLower)) {
+    scores.folk += 3;
+  }
+  if (
+    /\br&b\b/.test(artistLower) ||
+    /\bsoul\b/.test(artistLower) ||
+    /\bfunk\b/.test(artistLower)
+  ) {
+    scores["r-and-b"] += 4;
+  }
+  if (/\breggae\b/.test(artistLower) || /\blatin\b/.test(artistLower)) {
+    scores.reggae += 4;
+  }
+  if (/\bidol\b/.test(artistLower)) {
+    scores.idol += 3;
   }
 
   // -------------------------------------------------------------------------
@@ -390,16 +491,8 @@ const classifyGenre = (
   let best: TGenre = "pop";
   let bestScore = 0;
 
-  const listGenre: TGenre[] = [
-    "rock",
-    "ballad",
-    "electronic",
-    "pop",
-    "orchestral",
-    "other",
-  ];
-  for (let i = 0; i < listGenre.length; i += 1) {
-    const genre = listGenre[i];
+  for (let i = 0; i < LIST_ALL_GENRE.length; i += 1) {
+    const genre = LIST_ALL_GENRE[i];
     if (scores[genre] > bestScore) {
       bestScore = scores[genre];
       best = genre;
@@ -575,14 +668,7 @@ const run = async (): Promise<void> => {
   // Step 5: Classify each song
   console.log("Classifying genres...");
   const listUpdate: Array<{ id: number; genre: TGenre }> = [];
-  const distribution: Record<TGenre, number> = {
-    rock: 0,
-    ballad: 0,
-    electronic: 0,
-    pop: 0,
-    orchestral: 0,
-    other: 0,
-  };
+  const distribution = makeScores();
 
   for (let i = 0; i < listSong.length; i += 1) {
     const song = listSong[i];
@@ -614,16 +700,8 @@ const run = async (): Promise<void> => {
   }
 
   console.log("Genre distribution:");
-  const listGenreKey: TGenre[] = [
-    "rock",
-    "ballad",
-    "electronic",
-    "pop",
-    "orchestral",
-    "other",
-  ];
-  for (let i = 0; i < listGenreKey.length; i += 1) {
-    const genre = listGenreKey[i];
+  for (let i = 0; i < LIST_ALL_GENRE.length; i += 1) {
+    const genre = LIST_ALL_GENRE[i];
     const count = distribution[genre];
     const pct = ((count / listSong.length) * 100).toFixed(1);
     console.log(

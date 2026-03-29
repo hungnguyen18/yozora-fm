@@ -80,12 +80,20 @@ export const upsertAnimes = async (
     { coverUrl: string; year?: number; season?: string; titleJp?: string }
   >,
 ): Promise<Map<string, number>> => {
-  console.log(`Upserting ${animes.length} animes...`);
+  // Deduplicate by title — keep the last occurrence (most enriched)
+  const dedupMap = new Map<string, ISeedAnime>();
+  for (let i = 0; i < animes.length; i += 1) {
+    dedupMap.set(animes[i].title, animes[i]);
+  }
+  const listAnimeDeduped = Array.from(dedupMap.values());
+  console.log(
+    `Upserting ${listAnimeDeduped.length} animes (deduped from ${animes.length})...`,
+  );
 
   const animeIdMap = new Map<string, number>();
 
   // Upsert all animes in batches — updates existing rows on title conflict
-  const batches = chunkArray(animes, BATCH_SIZE);
+  const batches = chunkArray(listAnimeDeduped, BATCH_SIZE);
   for (let i = 0; i < batches.length; i += 1) {
     const batch = batches[i];
     const rows = batch.map((anime) => {
@@ -146,12 +154,23 @@ export const upsertSongs = async (
 ): Promise<void> => {
   console.log(`Upserting ${songs.length} songs...`);
 
+  // Deduplicate by (title, artistName, animeTitle) — keep last occurrence
+  const songDedupMap = new Map<string, ISeedSong>();
+  for (let i = 0; i < songs.length; i += 1) {
+    const s = songs[i];
+    songDedupMap.set(`${s.title}|${s.artistName}|${s.animeTitle}`, s);
+  }
+  const listSongDeduped = Array.from(songDedupMap.values());
+  console.log(
+    `  Deduped songs: ${listSongDeduped.length} (from ${songs.length})`,
+  );
+
   // Resolve only songs where both FKs can be resolved
   const listResolved: Array<Record<string, unknown>> = [];
   let skipped = 0;
 
-  for (let i = 0; i < songs.length; i += 1) {
-    const song = songs[i];
+  for (let i = 0; i < listSongDeduped.length; i += 1) {
+    const song = listSongDeduped[i];
     const artistId = artistIdMap.get(song.artistName);
     const animeId = animeIdMap.get(song.animeTitle);
 
