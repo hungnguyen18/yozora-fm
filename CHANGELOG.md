@@ -37,6 +37,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 - **Daily Challenge Widget** — Removed for cleaner UI
 
+## [0.1.8] - 2026-03-29
+
+### Removed
+
+- Remove auth system, migrate community features to guest identity
+
 ## [0.1.7] - 2026-03-25
 
 ### Fixed
