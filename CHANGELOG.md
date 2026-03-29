@@ -37,6 +37,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 - **Daily Challenge Widget** — Removed for cleaner UI
 
+## [0.1.7] - 2026-03-25
+
+### Fixed
+
+- Fix build: expose navigator.platform as computed for Vue template
+
 ## [0.1.6] - 2026-03-25
 
 ## [0.1.5] - 2026-03-24
